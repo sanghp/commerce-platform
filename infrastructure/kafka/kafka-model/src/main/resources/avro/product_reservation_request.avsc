@@ -1,0 +1,59 @@
+{
+    "namespace": "com.commerce.platform.kafka.order.avro.model",
+    "type": "record",
+    "name": "ProductReservationRequestAvroModel",
+    "fields": [
+        {
+            "name": "id",
+            "type": {
+                "type": "string",
+                "logicalType": "uuid"
+            }
+        },
+        {
+            "name": "sagaId",
+            "type": {
+                "type": "string",
+                "logicalType": "uuid"
+            }
+        },
+        {
+            "name": "orderId",
+            "type": {
+                "type": "string",
+                "logicalType": "uuid"
+            }
+        },
+        {
+            "name": "reservationOrderStatus",
+            "type": {
+                "type": "enum",
+                "name": "ProductReservationOrderStatus",
+                "symbols": ["PENDING", "PAID", "CANCELLED"]
+            }
+        },
+        {
+            "name": "products",
+            "type": {
+                "type": "array",
+                "items": "com.commerce.platform.kafka.order.avro.model.Product"
+            }
+        },
+        {
+            "name": "price",
+            "type": {
+                "type": "bytes",
+                "logicalType": "decimal",
+                "precision": 10,
+                "scale": 2
+            }
+        },
+        {
+            "name": "createdAt",
+            "type": {
+                "type": "long",
+                "logicalType": "timestamp-millis"
+            }
+        }
+    ]
+} 
