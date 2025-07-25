@@ -67,20 +67,34 @@ Spring Boot 3.5.3, Java 21 기반으로 구축한 MSA 기반 커머스 플랫폼
 
 ## ⚙️ 실행 방법
 
-### 1. 인프라 실행 (Kafka, MySQL)
-```bash
-docker-compose up -d
-```
+모든 명령어는 **프로젝트 루트 디렉터리**를 기준으로 실행합니다.
 
-### 2. 프로젝트 빌드 및 실행
+### 1. 애플리케이션 빌드
+
+먼저 프로젝트 루트 디렉터리에서 다음 명령어를 실행하여 모든 서비스 모듈을 빌드합니다.
+
 ```bash
 ./mvnw clean install
-# 각 서비스 모듈 실행
-java -jar order-service/order-container/target/order-service-0.0.1-SNAPSHOT.jar
-java -jar payment-service/payment-container/target/payment-service-0.0.1-SNAPSHOT.jar
-java -jar product-service/product-container/target/product-service-0.0.1-SNAPSHOT.jar
-java -jar customer-service/customer-container/target/customer-service-0.0.1-SNAPSHOT.jar
 ```
+
+### 2. 인프라 실행 (Kafka, MySQL)
+
+다음 명령어로 모든 인프라 서비스(MySQL, Kafka, Schema Registry)를 백그라운드에서 실행합니다.
+
+```bash
+docker compose -f infrastructure/docker-compose/docker-compose.yml up -d
+```
+
+### 3. 서비스 실행
+
+각 마이크로서비스는 개별적으로 실행해야 합니다. **각 서비스마다 새 터미널을 열고** 아래 명령어를 실행하세요.
+
+| 서비스             | 실행 명령어                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| **Order Service**  | `java -jar order-service/order-container/target/order-container-0.0.1-SNAPSHOT.jar`    |
+| **Payment Service**| `java -jar payment-service/payment-container/target/payment-service-0.0.1-SNAPSHOT.jar`|
+| **Product Service**| `java -jar product-service/product-container/target/product-service-0.0.1-SNAPSHOT.jar`|
+| **Customer Service**| `java -jar customer-service/customer-container/target/customer-service-0.0.1-SNAPSHOT.jar`|
 
 ---
 
