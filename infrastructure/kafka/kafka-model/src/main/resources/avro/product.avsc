@@ -1,0 +1,9 @@
+{
+    "namespace": "com.commerce.platform.kafka.order.avro.model",
+    "type": "record",
+    "name": "Product",
+    "fields": [
+        {"name": "id", "type": {"type": "string", "logicalType": "uuid"}},
+        {"name": "quantity", "type": "int"}
+    ]
+} 

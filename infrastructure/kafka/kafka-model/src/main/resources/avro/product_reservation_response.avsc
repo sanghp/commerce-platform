@@ -1,0 +1,59 @@
+{
+    "namespace": "com.commerce.platform.kafka.order.avro.model",
+    "type": "record",
+    "name": "ProductReservationResponseAvroModel",
+    "fields": [
+        {
+            "name": "id",
+            "type": {
+                "type": "string",
+                "logicalType": "uuid"
+            }
+        },
+        {
+            "name": "sagaId",
+            "type": {
+                "type": "string",
+                "logicalType": "uuid"
+            }
+        },
+        {
+            "name": "orderId",
+            "type": {
+                "type": "string",
+                "logicalType": "uuid"
+            }
+        },
+        {
+            "name": "createdAt",
+            "type": {
+                "type": "long",
+                "logicalType": "timestamp-millis"
+            }
+        },
+        {
+            "name": "productReservationStatus",
+            "type": {
+                  "type": "enum",
+                  "name": "ProductReservationStatus",
+                  "symbols": ["APPROVED", "REJECTED", "BOOKED", "CANCELLED"]
+               }
+        },
+        {
+            "name": "products",
+            "type": {
+                "type": "array",
+                "items": "com.commerce.platform.kafka.order.avro.model.Product"
+            }
+        },
+        {
+            "name": "failureMessages",
+            "type": {
+                "type": "array",
+                "items":{
+                  "type":"string"
+               }
+            }
+        }
+    ]
+} 
