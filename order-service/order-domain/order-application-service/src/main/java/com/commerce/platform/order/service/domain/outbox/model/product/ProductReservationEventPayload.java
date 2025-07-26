@@ -24,7 +24,7 @@ public class ProductReservationEventPayload {
     @JsonProperty
     private ZonedDateTime createdAt;
     @JsonProperty
-    private ProductReservationStatus productReservationStatus;
+    private ProductReservationOrderStatus reservationOrderStatus;
     @JsonProperty
     private List<ProductReservationEventProduct> products;
 }

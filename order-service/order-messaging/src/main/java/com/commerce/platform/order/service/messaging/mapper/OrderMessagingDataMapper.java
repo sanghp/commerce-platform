@@ -33,6 +33,8 @@ public class OrderMessagingDataMapper {
         return ProductReservationRequestAvroModel.newBuilder()
                 .setId(UUID.randomUUID())
                 .setSagaId(sagaId)
+                .setReservationOrderStatus(com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus
+                        .valueOf(reservationEventPayload.getReservationOrderStatus().name()))
                 .setOrderId(reservationEventPayload.getOrderId())
                 .setProducts(reservationEventPayload.getProducts().stream().map(product ->
                         com.commerce.platform.kafka.order.avro.model.Product.newBuilder()

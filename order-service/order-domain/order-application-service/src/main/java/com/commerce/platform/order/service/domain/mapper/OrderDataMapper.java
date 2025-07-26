@@ -15,6 +15,7 @@ import com.commerce.platform.order.service.domain.event.OrderReservedEvent;
 import com.commerce.platform.order.service.domain.outbox.model.payment.OrderPaymentEventPayload;
 import com.commerce.platform.order.service.domain.outbox.model.product.ProductReservationEventPayload;
 import com.commerce.platform.order.service.domain.outbox.model.product.ProductReservationEventProduct;
+import com.commerce.platform.order.service.domain.outbox.model.product.ProductReservationOrderStatus;
 import com.commerce.platform.order.service.domain.valueobject.StreetAddress;
 import org.springframework.stereotype.Component;
 
@@ -55,7 +56,7 @@ public class OrderDataMapper {
                 .customerId(orderCreatedEvent.getOrder().getCustomerId().getValue())
                 .price(orderCreatedEvent.getOrder().getPrice().getAmount())
                 .createdAt(orderCreatedEvent.getCreatedAt())
-                .productReservationStatus(ProductReservationStatus.PENDING)
+                .reservationOrderStatus(ProductReservationOrderStatus.PENDING)
                 .products(orderCreatedEvent.getOrder().getItems().stream().map(item ->
                                 ProductReservationEventProduct.builder()
                                         .id(item.getProduct().getId().getValue())
@@ -81,7 +82,7 @@ public class OrderDataMapper {
                 .customerId(domainEvent.getOrder().getCustomerId().getValue())
                 .price(domainEvent.getOrder().getPrice().getAmount())
                 .createdAt(domainEvent.getCreatedAt())
-                .productReservationStatus(ProductReservationStatus.BOOKED)
+                .reservationOrderStatus(ProductReservationOrderStatus.PAID)
                 .build();
     }
 
@@ -92,7 +93,7 @@ public class OrderDataMapper {
                 .customerId(domainEvent.getOrder().getCustomerId().getValue())
                 .price(domainEvent.getOrder().getPrice().getAmount())
                 .createdAt(domainEvent.getCreatedAt())
-                .productReservationStatus(ProductReservationStatus.CANCELLED)
+                .reservationOrderStatus(ProductReservationOrderStatus.CANCELLED)
                 .build();
     }
 

@@ -1,7 +1,7 @@
 package com.commerce.platform.order.service.messaging.publisher.kafka;
 
-import com.commerce.platform.order.service.messaging.mapper.OrderMessagingDataMapper;
 import com.commerce.platform.kafka.order.avro.model.PaymentRequestAvroModel;
+import com.commerce.platform.order.service.messaging.mapper.OrderMessagingDataMapper;
 import com.commerce.platform.kafka.producer.KafkaMessageHelper;
 import com.commerce.platform.kafka.producer.service.KafkaProducer;
 import com.commerce.platform.order.service.domain.config.OrderServiceConfigData;

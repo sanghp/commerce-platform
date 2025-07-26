@@ -1,9 +1,9 @@
 package com.commerce.platform.order.service.messaging.listener.kafka;
 
+import com.commerce.platform.kafka.order.avro.model.PaymentResponseAvroModel;
 import com.commerce.platform.kafka.order.avro.model.PaymentStatus;
 import com.commerce.platform.order.service.messaging.mapper.OrderMessagingDataMapper;
 import com.commerce.platform.kafka.consumer.KafkaConsumer;
-import com.commerce.platform.kafka.order.avro.model.PaymentResponseAvroModel;
 import com.commerce.platform.order.service.domain.exception.OrderNotFoundException;
 import com.commerce.platform.order.service.domain.ports.input.message.listener.payment.PaymentResponseMessageListener;
 import lombok.extern.slf4j.Slf4j;
@@ -47,8 +47,7 @@ public class PaymentResponseKafkaListener implements KafkaConsumer<PaymentRespon
                     log.info("Processing successful payment for order id: {}", paymentResponseAvroModel.getOrderId());
                     paymentResponseMessageListener.paymentCompleted(orderMessagingDataMapper
                             .paymentResponseAvroModelToPaymentResponse(paymentResponseAvroModel));
-                } else if (PaymentStatus.CANCELLED == paymentResponseAvroModel.getPaymentStatus() ||
-                        PaymentStatus.FAILED == paymentResponseAvroModel.getPaymentStatus()) {
+                } else if (PaymentStatus.FAILED == paymentResponseAvroModel.getPaymentStatus()) {
                     log.info("Processing unsuccessful payment for order id: {}", paymentResponseAvroModel.getOrderId());
                     paymentResponseMessageListener.paymentCancelled(orderMessagingDataMapper
                             .paymentResponseAvroModelToPaymentResponse(paymentResponseAvroModel));
