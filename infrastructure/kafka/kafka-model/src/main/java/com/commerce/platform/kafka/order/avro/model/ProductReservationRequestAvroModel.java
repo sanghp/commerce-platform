@@ -13,10 +13,10 @@ import org.apache.avro.message.SchemaStore;
 
 @org.apache.avro.specific.AvroGenerated
 public class ProductReservationRequestAvroModel extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
-  private static final long serialVersionUID = 1513108159943892519L;
+  private static final long serialVersionUID = -976910842609449328L;
 
 
-  public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"ProductReservationRequestAvroModel\",\"namespace\":\"com.commerce.platform.kafka.order.avro.model\",\"fields\":[{\"name\":\"id\",\"type\":{\"type\":\"string\",\"logicalType\":\"uuid\"}},{\"name\":\"sagaId\",\"type\":{\"type\":\"string\",\"logicalType\":\"uuid\"}},{\"name\":\"orderId\",\"type\":{\"type\":\"string\",\"logicalType\":\"uuid\"}},{\"name\":\"products\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"record\",\"name\":\"Product\",\"fields\":[{\"name\":\"id\",\"type\":{\"type\":\"string\",\"logicalType\":\"uuid\"}},{\"name\":\"quantity\",\"type\":\"int\"}]}}},{\"name\":\"price\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":10,\"scale\":2}},{\"name\":\"createdAt\",\"type\":{\"type\":\"long\",\"logicalType\":\"timestamp-millis\"}}]}");
+  public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"ProductReservationRequestAvroModel\",\"namespace\":\"com.commerce.platform.kafka.order.avro.model\",\"fields\":[{\"name\":\"id\",\"type\":{\"type\":\"string\",\"logicalType\":\"uuid\"}},{\"name\":\"sagaId\",\"type\":{\"type\":\"string\",\"logicalType\":\"uuid\"}},{\"name\":\"orderId\",\"type\":{\"type\":\"string\",\"logicalType\":\"uuid\"}},{\"name\":\"reservationOrderStatus\",\"type\":{\"type\":\"enum\",\"name\":\"ProductReservationOrderStatus\",\"symbols\":[\"PENDING\",\"CONFIRMED\",\"CANCELLED\"]}},{\"name\":\"products\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"record\",\"name\":\"Product\",\"fields\":[{\"name\":\"id\",\"type\":{\"type\":\"string\",\"logicalType\":\"uuid\"}},{\"name\":\"quantity\",\"type\":\"int\"}]}}},{\"name\":\"price\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":10,\"scale\":2}},{\"name\":\"createdAt\",\"type\":{\"type\":\"long\",\"logicalType\":\"timestamp-millis\"}}]}");
   public static org.apache.avro.Schema getClassSchema() { return SCHEMA$; }
 
   private static final SpecificData MODEL$ = new SpecificData();
@@ -80,6 +80,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
   private java.util.UUID id;
   private java.util.UUID sagaId;
   private java.util.UUID orderId;
+  private com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus reservationOrderStatus;
   private java.util.List<com.commerce.platform.kafka.order.avro.model.Product> products;
   private java.math.BigDecimal price;
   private java.time.Instant createdAt;
@@ -96,14 +97,16 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
    * @param id The new value for id
    * @param sagaId The new value for sagaId
    * @param orderId The new value for orderId
+   * @param reservationOrderStatus The new value for reservationOrderStatus
    * @param products The new value for products
    * @param price The new value for price
    * @param createdAt The new value for createdAt
    */
-  public ProductReservationRequestAvroModel(java.util.UUID id, java.util.UUID sagaId, java.util.UUID orderId, java.util.List<com.commerce.platform.kafka.order.avro.model.Product> products, java.math.BigDecimal price, java.time.Instant createdAt) {
+  public ProductReservationRequestAvroModel(java.util.UUID id, java.util.UUID sagaId, java.util.UUID orderId, com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus reservationOrderStatus, java.util.List<com.commerce.platform.kafka.order.avro.model.Product> products, java.math.BigDecimal price, java.time.Instant createdAt) {
     this.id = id;
     this.sagaId = sagaId;
     this.orderId = orderId;
+    this.reservationOrderStatus = reservationOrderStatus;
     this.products = products;
     this.price = price;
     this.createdAt = createdAt.truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
@@ -122,9 +125,10 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
     case 0: return id;
     case 1: return sagaId;
     case 2: return orderId;
-    case 3: return products;
-    case 4: return price;
-    case 5: return createdAt;
+    case 3: return reservationOrderStatus;
+    case 4: return products;
+    case 5: return price;
+    case 6: return createdAt;
     default: throw new IndexOutOfBoundsException("Invalid index: " + field$);
     }
   }
@@ -134,6 +138,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       new org.apache.avro.Conversions.UUIDConversion(),
       new org.apache.avro.Conversions.UUIDConversion(),
       new org.apache.avro.Conversions.UUIDConversion(),
+      null,
       null,
       new org.apache.avro.Conversions.DecimalConversion(),
       new org.apache.avro.data.TimeConversions.TimestampMillisConversion(),
@@ -153,9 +158,10 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
     case 0: id = (java.util.UUID)value$; break;
     case 1: sagaId = (java.util.UUID)value$; break;
     case 2: orderId = (java.util.UUID)value$; break;
-    case 3: products = (java.util.List<com.commerce.platform.kafka.order.avro.model.Product>)value$; break;
-    case 4: price = (java.math.BigDecimal)value$; break;
-    case 5: createdAt = (java.time.Instant)value$; break;
+    case 3: reservationOrderStatus = (com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus)value$; break;
+    case 4: products = (java.util.List<com.commerce.platform.kafka.order.avro.model.Product>)value$; break;
+    case 5: price = (java.math.BigDecimal)value$; break;
+    case 6: createdAt = (java.time.Instant)value$; break;
     default: throw new IndexOutOfBoundsException("Invalid index: " + field$);
     }
   }
@@ -209,6 +215,23 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
    */
   public void setOrderId(java.util.UUID value) {
     this.orderId = value;
+  }
+
+  /**
+   * Gets the value of the 'reservationOrderStatus' field.
+   * @return The value of the 'reservationOrderStatus' field.
+   */
+  public com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus getReservationOrderStatus() {
+    return reservationOrderStatus;
+  }
+
+
+  /**
+   * Sets the value of the 'reservationOrderStatus' field.
+   * @param value the value to set.
+   */
+  public void setReservationOrderStatus(com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus value) {
+    this.reservationOrderStatus = value;
   }
 
   /**
@@ -306,6 +329,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
     private java.util.UUID id;
     private java.util.UUID sagaId;
     private java.util.UUID orderId;
+    private com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus reservationOrderStatus;
     private java.util.List<com.commerce.platform.kafka.order.avro.model.Product> products;
     private java.math.BigDecimal price;
     private java.time.Instant createdAt;
@@ -333,17 +357,21 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
         this.orderId = data().deepCopy(fields()[2].schema(), other.orderId);
         fieldSetFlags()[2] = other.fieldSetFlags()[2];
       }
-      if (isValidValue(fields()[3], other.products)) {
-        this.products = data().deepCopy(fields()[3].schema(), other.products);
+      if (isValidValue(fields()[3], other.reservationOrderStatus)) {
+        this.reservationOrderStatus = data().deepCopy(fields()[3].schema(), other.reservationOrderStatus);
         fieldSetFlags()[3] = other.fieldSetFlags()[3];
       }
-      if (isValidValue(fields()[4], other.price)) {
-        this.price = data().deepCopy(fields()[4].schema(), other.price);
+      if (isValidValue(fields()[4], other.products)) {
+        this.products = data().deepCopy(fields()[4].schema(), other.products);
         fieldSetFlags()[4] = other.fieldSetFlags()[4];
       }
-      if (isValidValue(fields()[5], other.createdAt)) {
-        this.createdAt = data().deepCopy(fields()[5].schema(), other.createdAt);
+      if (isValidValue(fields()[5], other.price)) {
+        this.price = data().deepCopy(fields()[5].schema(), other.price);
         fieldSetFlags()[5] = other.fieldSetFlags()[5];
+      }
+      if (isValidValue(fields()[6], other.createdAt)) {
+        this.createdAt = data().deepCopy(fields()[6].schema(), other.createdAt);
+        fieldSetFlags()[6] = other.fieldSetFlags()[6];
       }
     }
 
@@ -365,17 +393,21 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
         this.orderId = data().deepCopy(fields()[2].schema(), other.orderId);
         fieldSetFlags()[2] = true;
       }
-      if (isValidValue(fields()[3], other.products)) {
-        this.products = data().deepCopy(fields()[3].schema(), other.products);
+      if (isValidValue(fields()[3], other.reservationOrderStatus)) {
+        this.reservationOrderStatus = data().deepCopy(fields()[3].schema(), other.reservationOrderStatus);
         fieldSetFlags()[3] = true;
       }
-      if (isValidValue(fields()[4], other.price)) {
-        this.price = data().deepCopy(fields()[4].schema(), other.price);
+      if (isValidValue(fields()[4], other.products)) {
+        this.products = data().deepCopy(fields()[4].schema(), other.products);
         fieldSetFlags()[4] = true;
       }
-      if (isValidValue(fields()[5], other.createdAt)) {
-        this.createdAt = data().deepCopy(fields()[5].schema(), other.createdAt);
+      if (isValidValue(fields()[5], other.price)) {
+        this.price = data().deepCopy(fields()[5].schema(), other.price);
         fieldSetFlags()[5] = true;
+      }
+      if (isValidValue(fields()[6], other.createdAt)) {
+        this.createdAt = data().deepCopy(fields()[6].schema(), other.createdAt);
+        fieldSetFlags()[6] = true;
       }
     }
 
@@ -500,6 +532,46 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
     }
 
     /**
+      * Gets the value of the 'reservationOrderStatus' field.
+      * @return The value.
+      */
+    public com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus getReservationOrderStatus() {
+      return reservationOrderStatus;
+    }
+
+
+    /**
+      * Sets the value of the 'reservationOrderStatus' field.
+      * @param value The value of 'reservationOrderStatus'.
+      * @return This builder.
+      */
+    public com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel.Builder setReservationOrderStatus(com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus value) {
+      validate(fields()[3], value);
+      this.reservationOrderStatus = value;
+      fieldSetFlags()[3] = true;
+      return this;
+    }
+
+    /**
+      * Checks whether the 'reservationOrderStatus' field has been set.
+      * @return True if the 'reservationOrderStatus' field has been set, false otherwise.
+      */
+    public boolean hasReservationOrderStatus() {
+      return fieldSetFlags()[3];
+    }
+
+
+    /**
+      * Clears the value of the 'reservationOrderStatus' field.
+      * @return This builder.
+      */
+    public com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel.Builder clearReservationOrderStatus() {
+      reservationOrderStatus = null;
+      fieldSetFlags()[3] = false;
+      return this;
+    }
+
+    /**
       * Gets the value of the 'products' field.
       * @return The value.
       */
@@ -514,9 +586,9 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       * @return This builder.
       */
     public com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel.Builder setProducts(java.util.List<com.commerce.platform.kafka.order.avro.model.Product> value) {
-      validate(fields()[3], value);
+      validate(fields()[4], value);
       this.products = value;
-      fieldSetFlags()[3] = true;
+      fieldSetFlags()[4] = true;
       return this;
     }
 
@@ -525,7 +597,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       * @return True if the 'products' field has been set, false otherwise.
       */
     public boolean hasProducts() {
-      return fieldSetFlags()[3];
+      return fieldSetFlags()[4];
     }
 
 
@@ -535,7 +607,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       */
     public com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel.Builder clearProducts() {
       products = null;
-      fieldSetFlags()[3] = false;
+      fieldSetFlags()[4] = false;
       return this;
     }
 
@@ -554,9 +626,9 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       * @return This builder.
       */
     public com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel.Builder setPrice(java.math.BigDecimal value) {
-      validate(fields()[4], value);
+      validate(fields()[5], value);
       this.price = value;
-      fieldSetFlags()[4] = true;
+      fieldSetFlags()[5] = true;
       return this;
     }
 
@@ -565,7 +637,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       * @return True if the 'price' field has been set, false otherwise.
       */
     public boolean hasPrice() {
-      return fieldSetFlags()[4];
+      return fieldSetFlags()[5];
     }
 
 
@@ -575,7 +647,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       */
     public com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel.Builder clearPrice() {
       price = null;
-      fieldSetFlags()[4] = false;
+      fieldSetFlags()[5] = false;
       return this;
     }
 
@@ -594,9 +666,9 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       * @return This builder.
       */
     public com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel.Builder setCreatedAt(java.time.Instant value) {
-      validate(fields()[5], value);
+      validate(fields()[6], value);
       this.createdAt = value.truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
-      fieldSetFlags()[5] = true;
+      fieldSetFlags()[6] = true;
       return this;
     }
 
@@ -605,7 +677,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       * @return True if the 'createdAt' field has been set, false otherwise.
       */
     public boolean hasCreatedAt() {
-      return fieldSetFlags()[5];
+      return fieldSetFlags()[6];
     }
 
 
@@ -614,7 +686,7 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
       * @return This builder.
       */
     public com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel.Builder clearCreatedAt() {
-      fieldSetFlags()[5] = false;
+      fieldSetFlags()[6] = false;
       return this;
     }
 
@@ -626,9 +698,10 @@ public class ProductReservationRequestAvroModel extends org.apache.avro.specific
         record.id = fieldSetFlags()[0] ? this.id : (java.util.UUID) defaultValue(fields()[0]);
         record.sagaId = fieldSetFlags()[1] ? this.sagaId : (java.util.UUID) defaultValue(fields()[1]);
         record.orderId = fieldSetFlags()[2] ? this.orderId : (java.util.UUID) defaultValue(fields()[2]);
-        record.products = fieldSetFlags()[3] ? this.products : (java.util.List<com.commerce.platform.kafka.order.avro.model.Product>) defaultValue(fields()[3]);
-        record.price = fieldSetFlags()[4] ? this.price : (java.math.BigDecimal) defaultValue(fields()[4]);
-        record.createdAt = fieldSetFlags()[5] ? this.createdAt : (java.time.Instant) defaultValue(fields()[5]);
+        record.reservationOrderStatus = fieldSetFlags()[3] ? this.reservationOrderStatus : (com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus) defaultValue(fields()[3]);
+        record.products = fieldSetFlags()[4] ? this.products : (java.util.List<com.commerce.platform.kafka.order.avro.model.Product>) defaultValue(fields()[4]);
+        record.price = fieldSetFlags()[5] ? this.price : (java.math.BigDecimal) defaultValue(fields()[5]);
+        record.createdAt = fieldSetFlags()[6] ? this.createdAt : (java.time.Instant) defaultValue(fields()[6]);
         return record;
       } catch (org.apache.avro.AvroMissingFieldException e) {
         throw e;
