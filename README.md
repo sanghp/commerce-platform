@@ -38,30 +38,30 @@ Spring Boot 3.5.3, Java 21 기반으로 구축한 MSA 기반 커머스 플랫폼
 
 ## 🔄 주문 및 재고 처리 흐름 (SAGA Pattern)
 
-해당 프로젝트의 핵심 비즈니스 로직은 **Saga 패턴(Orchestration)**을 통해 구현됩니다. `Order Service`가 전체 트랜잭션의 흐름을 지휘하는 **Orchestrator** 역할을 수행하며 모든 서비스 간의 통신은 **Kafka를 통한 비동기 메시지 교환**으로 이루어집니다.
+해당 프로젝트의 핵심 비즈니스 로직은 **Saga 패턴(Orchestration)**을 통해 구현됩니다. `Order Service`가 전체 트랜잭션의 흐름을 지휘하는 **Orchestrator** 역할을 수행하며, 서비스 간 통신은 **Kafka를 통한 비둉기 메시지 교환**으로 이루어집니다. `Order Service`는 각 요청 메시지에 `OrderStatus`를 포함하고 발행하며 메시지를 구독하는 서비스는 `OrderStatus` 상태를 기반으로 수행할 작업을 결정합니다.
 
 1.  **주문 생성 및 재고 예약 요청**:
-    *   `Order Service`는 주문을 `PENDING` 상태로 생성하고 재고 예약을 위해 `Product Service`로 `ProductReservationRequest` 이벤트를 Kafka로 발행하며 Saga를 시작합니다.
+    *   `Order Service`는 주문을 `PENDING` 상태로 생성하고 Saga를 시작하기 위해 `product-reservation-request` 토픽으로 메시지를 발행합니다.
+    *   이 메시지에는 `OrderStatus`가 `PENDING`으로 설정되어 있으며 `Product Service`는 해당 메시지를 구독하여 재고 예약을 시도합니다.
 
 2.  **재고 예약 처리 및 응답 (Product Service)**:
-    *   `Product Service`는 `ProductReservationRequest`를 구독하여 재고 예약을 시도합니다.
-    *   처리 결과를 `ProductReservationResponse` 이벤트(성공/실패 여부 포함)로 발행합니다.
+    *   `Product Service`는 재고 예약 후, `product-reservation-response` 토픽으로 메세지를 발행합니다. 이 메시지에는 예약 상태를 나타내는 `ReservationStatus`가 포함됩니다.
 
 3.  **결제 요청 (Order Service)**:
-    *   `Order Service`는 `ProductReservationResponse`(성공) 이벤트를 구독한 뒤 결제를 위해 `Payment Service`로 `PaymentRequest` 이벤트를 발행합니다.
+    *   `Order Service`는 재고 예약 성공 메세지를 구독한 뒤 `payment-request` 토픽으로 결제 요청 메시지를 발행합니다.
 
 4.  **결제 처리 및 응답 (Payment Service)**:
-    *   `Payment Service`는 `PaymentRequest`를 구독하여 결제를 시도합니다.
-    *   처리 결과를 `PaymentResponse` 이벤트(성공/실패 여부 포함)로 발행합니다.
+    *   `Payment Service`는 결제 처리 후, `payment-response` 토픽으로 결과를 발행합니다. 이 메시지에는 결제 성공/실패 여부를 나타내는 `PaymentStatus`가 포함됩니다.
 
-5.  **주문 완료 및 재고 최종 차감**:
-    *   `Order Service`는 `PaymentResponse`(성공) 이벤트를 구독하면 비즈니스 관점에서 주문이 완료되었으므로 주문 상태를 `COMPLETED`로 변경하고 Saga 트랜잭션을 종료하는 최종 `OrderPaidEvent`를 발행합니다.
-        *   *Note: 결제가 성공한 시점에 이미 재고는 '예약' 상태이므로 고객에게 상품을 제공할 의무가 발생합니다. 따라서 `Order Service`는 자신의 책임을 다한 것으로 간주합니다.*
-    *   `Product Service`는 `OrderPaidEvent`를 구독하여 예약 상태였던 재고를 실제 '차감' 상태로 갱신하는 후처리 작업을 수행합니다. 이 작업은 재시도(Retry) 및 DLQ(Dead-Letter Queue)를 통해 최종적인 데이터 정합성을 보장합니다.
+5.  **재고 확정 및 주문 완료**:
+    *   `Order Service`는 결제 성공 메세지를 구독하면 주문 상태를 `PAID`로 변경합니다.
+    *   이후 예약된 재고를 확정(차감)하기 위해 `product-reservation-request` 토픽으로 `OrderStatus`가 `BOOKED`로 설정된 메시지를 다시 발행합니다.
+    *   `Product Service`는 해당 메시지를 구독하여 재고를 차감하고 `product-reservation-response` 토픽에 `OrderStatus`를 `CONFIRMED`로 설정하여 메세지를 발행합니다.
+    *   `Order Service`가 해당 메세지를 구독하면 주문을 완료 처리하고 Saga 트랜잭션을 종료합니다.
 
 6.  **보상 트랜잭션 (실패 처리)**:
-    *   **재고 예약 실패 시**: `ProductReservationResponse`(실패) 이벤트를 수신하면 `Order Service`는 아직 다른 서비스에 변경을 가한 사항이 없으므로 생성했던 주문의 상태를 `CANCELLED`로 변경하고 Saga를 실패로 종료합니다.
-    *   **결제 실패 시**: `PaymentResponse`(실패) 이벤트를 수신하면, `Order Service`는 이전에 성공했던 '재고 예약'을 취소하기 위한 보상 트랜잭션을 시작합니다. `Product Service`로 `ProductReservationCancelRequest`를 발행하여 예약된 재고를 해제하여 데이터 일관성을 맞춥니다.
+    *   **재고 예약 실패 시**: `Product Service`는 재고 예약에 실패하면 `product-reservation-response` 토픽으로 `ReservationStatus`를 `REJECTED`로 설정하여 응답합니다. `Order Service`는 이 메시지를 구독하여 주문 상태를 `CANCELLED`로 변경하고 Saga를 종료합니다.
+    *   **결제 실패 시**: `Payment Service`의 결제 실패 응답을 구독한 `Order Service`는 보상 트랜잭션을 시작합니다. `product-reservation-request` 토픽으로 `OrderStatus`를 `CANCELLED`로 설정하고 메시지를 발행하여 `Product Service`에 예약된 재고가 해제되도록 요청합니다. `Product Service`가 재고를 해제하고 `ReservationStatus`를 `CANCELLED`로 설정하여 메세지를 발행하면 `Order Service`는 주문의 상태를 최종적으로 `CANCELLED`로 변경하고 Saga를 종료합니다.
 
 ---
 
