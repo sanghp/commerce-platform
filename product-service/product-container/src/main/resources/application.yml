@@ -1,0 +1,79 @@
+server:
+  port: 8182
+
+logging:
+  level:
+    root: warn
+    org.springframework: warn
+    org.springframework.boot: warn
+    org.hibernate.SQL: off
+    org.hibernate.type.descriptor.sql: off
+    com.zaxxer.hikari: error
+    org.apache.coyote.http11: off
+
+product-service:
+  product-reservation-request-topic-name: product-reservation-request
+  product-reservation-response-topic-name: product-reservation-response
+  outbox-scheduler-fixed-rate: 5000
+  outbox-scheduler-initial-delay: 10000
+
+spring:
+  main:
+    banner-mode: off
+  jpa:
+    open-in-view: false
+    show-sql: false
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    properties:
+      hibernate:
+        default_schema: product
+  datasource:
+    url: jdbc:mysql://localhost:13306/product?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    platform: mysql
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:init-schema.sql
+
+kafka-config:
+  bootstrap-servers: localhost:19092, localhost:19093, localhost:19094
+  schema-registry-url-key: schema.registry.url
+  schema-registry-url: http://localhost:18081
+  num-of-partitions: 3
+  replication-factor: 3
+
+kafka-producer-config:
+  key-serializer-class: org.apache.kafka.common.serialization.UUIDSerializer
+  value-serializer-class: io.confluent.kafka.serializers.KafkaAvroSerializer
+  compression-type: none
+  acks: all
+  batch-size: 16384
+  batch-size-boost-factor: 100
+  linger-ms: 5
+  request-timeout-ms: 60000
+  retry-count: 5
+
+kafka-consumer-config:
+  key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+  product-reservation-consumer-group-id: product-reservation-topic-consumer
+  customer-group-id: customer-topic-consumer
+  auto-offset-reset: earliest
+  specific-avro-reader-key: specific.avro.reader
+  specific-avro-reader: true
+  batch-listener: true
+  auto-startup: true
+  concurrency-level: 3
+  session-timeout-ms: 10000
+  heartbeat-interval-ms: 3000
+  max-poll-interval-ms: 300000
+  max-poll-records: 500
+  max-partition-fetch-bytes-default: 1048576
+  max-partition-fetch-bytes-boost-factor: 1
+  poll-timeout-ms: 150

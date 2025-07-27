@@ -1,0 +1,51 @@
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS `product_reservations`;
+DROP TABLE IF EXISTS `products`;
+DROP TABLE IF EXISTS `product_outbox`;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE `products`
+(
+    id               BINARY(16)     NOT NULL,
+    name             VARCHAR(255)   NOT NULL,
+    price            DECIMAL(10,2)  NOT NULL,
+    quantity         INT            NOT NULL,
+    reserved_quantity INT           NOT NULL DEFAULT 0,
+    enabled          BOOLEAN        NOT NULL DEFAULT TRUE,
+    created_at       TIMESTAMP(6)   NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE `product_reservations`
+(
+    id          BINARY(16)     NOT NULL,
+    product_id  BINARY(16)     NOT NULL,
+    order_id    BINARY(16)     NOT NULL,
+    saga_id     BINARY(16)     NOT NULL,
+    quantity    INT            NOT NULL,
+    status      ENUM('PENDING', 'CONFIRMED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+    created_at  TIMESTAMP(6)   NOT NULL,
+    updated_at  TIMESTAMP(6)   NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT `fk_product_reservations_products` FOREIGN KEY (product_id) REFERENCES `products` (id) ON DELETE CASCADE
+);
+
+CREATE INDEX `idx_product_reservations_order_id` ON `product_reservations` (order_id);
+CREATE INDEX `idx_product_reservations_saga_id` ON `product_reservations` (saga_id);
+
+CREATE TABLE `product_outbox`
+(
+    id            BINARY(16)   NOT NULL,
+    saga_id       BINARY(16)   NOT NULL,
+    created_at    TIMESTAMP(6) NOT NULL,
+    processed_at  TIMESTAMP(6),
+    type          VARCHAR(255) NOT NULL,
+    payload       JSON         NOT NULL,
+    outbox_status ENUM ('STARTED', 'COMPLETED', 'FAILED') NOT NULL,
+    version       INT          NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX `product_outbox_saga_id_type_unique_index` ON `product_outbox` (saga_id, type);

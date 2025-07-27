@@ -1,0 +1,23 @@
+package com.commerce.platform.product.service.container;
+
+
+import com.commerce.platform.product.service.domain.ProductDomainService;
+import com.commerce.platform.product.service.domain.ProductDomainServiceImpl;
+import com.commerce.platform.product.service.domain.ProductReservationDomainService;
+import com.commerce.platform.product.service.domain.ProductReservationDomainServiceImpl;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class BeanConfiguration {
+
+    @Bean
+    public ProductDomainService productDomainService() {
+        return new ProductDomainServiceImpl();
+    }
+
+    @Bean
+    public ProductReservationDomainService productReservationDomainService() {
+        return new ProductReservationDomainServiceImpl();
+    }
+} 
