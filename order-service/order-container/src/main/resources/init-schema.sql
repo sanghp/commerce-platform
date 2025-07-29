@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS `order_address`;
 DROP TABLE IF EXISTS `orders`;
 DROP TABLE IF EXISTS `payment_outbox`;
 DROP TABLE IF EXISTS `product_reservation_outbox`;
+DROP TABLE IF EXISTS `order_inbox`;
 
 -- 외래 키 체크 재활성화
 SET FOREIGN_KEY_CHECKS = 1;
@@ -86,3 +87,21 @@ CREATE INDEX `product_reservation_outbox_saga_status`
 CREATE INDEX `product_reservation_outbox_saga_id_saga_status`
     ON `product_reservation_outbox`
     (saga_id, saga_status);
+
+CREATE TABLE `order_inbox`
+(
+    id            BINARY(16)   NOT NULL,
+    saga_id       BINARY(16)   NOT NULL,
+    event_type    VARCHAR(255) NOT NULL,
+    payload       JSON         NOT NULL,
+    status        ENUM('RECEIVED', 'PROCESSING', 'PROCESSED', 'FAILED') NOT NULL DEFAULT 'RECEIVED',
+    received_at   TIMESTAMP(6) NOT NULL,
+    processed_at  TIMESTAMP(6),
+    retry_count   INT DEFAULT 0,
+    error_message TEXT,
+    version       INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT `uk_order_inbox_saga_id_event_type` UNIQUE (saga_id, event_type),
+    INDEX `idx_status_received` (status, received_at),
+    INDEX `idx_status_retry_received` (status, retry_count, received_at)
+);

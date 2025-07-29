@@ -56,7 +56,14 @@ CREATE TABLE `product_inbox`
     saga_id       BINARY(16)   NOT NULL,
     event_type    VARCHAR(255) NOT NULL,
     payload       JSON         NOT NULL,
-    processed_at  TIMESTAMP(6) NOT NULL,
+    status        ENUM('RECEIVED', 'PROCESSING', 'PROCESSED', 'FAILED') NOT NULL DEFAULT 'RECEIVED',
+    received_at   TIMESTAMP(6) NOT NULL,
+    processed_at  TIMESTAMP(6),
+    retry_count   INT DEFAULT 0,
+    error_message TEXT,
+    version       INT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    CONSTRAINT `uk_product_inbox_saga_id_event_type` UNIQUE (saga_id, event_type)
+    CONSTRAINT `uk_product_inbox_saga_id_event_type` UNIQUE (saga_id, event_type),
+    INDEX `idx_status_received` (status, received_at),
+    INDEX `idx_status_retry_received` (status, retry_count, received_at)
 );
