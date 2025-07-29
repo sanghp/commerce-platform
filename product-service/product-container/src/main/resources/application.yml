@@ -30,7 +30,6 @@ spring:
     properties:
       hibernate:
         default_schema: product
-        dialect: org.hibernate.dialect.MySQL8Dialect
   datasource:
     url: jdbc:mysql://localhost:13306/product?allowPublicKeyRetrieval=true&useSSL=false&createDatabaseIfNotExist=true&serverTimezone=UTC
     username: root
