@@ -1,5 +1,6 @@
 package com.commerce.platform.product.service.domain.outbox.model;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.outbox.OutboxStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +19,7 @@ public class ProductOutboxMessage {
     private final ZonedDateTime createdAt;
     @Setter
     private ZonedDateTime processedAt;
-    private final String type;
+    private final ServiceMessageType type;
     @Setter
     private String payload;
     @Setter

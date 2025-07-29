@@ -1,5 +1,6 @@
 package com.commerce.platform.product.service.dataaccess.outbox.entity;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.outbox.OutboxStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,7 +23,8 @@ public class ProductOutboxEntity {
     private UUID sagaId;
     private ZonedDateTime createdAt;
     private ZonedDateTime processedAt;
-    private String type;
+    @Enumerated(EnumType.STRING)
+    private ServiceMessageType type;
     private String payload;
     @Enumerated(EnumType.STRING)
     private OutboxStatus outboxStatus;

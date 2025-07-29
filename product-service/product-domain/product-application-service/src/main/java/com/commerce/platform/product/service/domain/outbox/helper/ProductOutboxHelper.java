@@ -1,5 +1,7 @@
 package com.commerce.platform.product.service.domain.outbox.helper;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
+
 import com.commerce.platform.outbox.OutboxStatus;
 import com.commerce.platform.product.service.domain.exception.ProductDomainException;
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
@@ -16,7 +18,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.commerce.platform.product.service.domain.outbox.ProductOutboxEventType.PRODUCT_RESERVATION_RESPONSE;
 
 @Slf4j
 @Component
@@ -49,7 +50,7 @@ public class ProductOutboxHelper {
     }
 
     @Transactional
-    public void updateOutboxMessage(ProductReservationResponseEventPayload payload, String type, UUID sagaId) {
+    public void updateOutboxMessage(ProductReservationResponseEventPayload payload, ServiceMessageType type, UUID sagaId) {
         ProductOutboxMessage message = outboxRepository.findByTypeAndSagaId(type, sagaId)
                 .orElseThrow(() -> new ProductDomainException("Outbox message not found for type " + type + " and saga id: " + sagaId));
 
@@ -59,12 +60,12 @@ public class ProductOutboxHelper {
     }
 
     @Transactional(readOnly = true)
-    public boolean isMessageProcessed(String type, UUID sagaId) {
+    public boolean isMessageProcessed(ServiceMessageType type, UUID sagaId) {
         return outboxRepository.findByTypeAndSagaId(type, sagaId).isPresent();
     }
     
     @Transactional(readOnly = true)
-    public Optional<ProductOutboxMessage> findByTypeAndSagaId(String type, UUID sagaId) {
+    public Optional<ProductOutboxMessage> findByTypeAndSagaId(ServiceMessageType type, UUID sagaId) {
         return outboxRepository.findByTypeAndSagaId(type, sagaId);
     }
 

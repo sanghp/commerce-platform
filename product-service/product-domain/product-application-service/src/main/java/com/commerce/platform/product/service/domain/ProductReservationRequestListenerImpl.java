@@ -10,7 +10,7 @@ import com.commerce.platform.product.service.domain.outbox.helper.ProductOutboxH
 import com.commerce.platform.product.service.domain.outbox.model.ProductReservationProduct;
 import com.commerce.platform.product.service.domain.outbox.model.ProductReservationResponseEventPayload;
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
-import com.commerce.platform.product.service.domain.outbox.ProductOutboxEventType;
+import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.product.service.domain.ports.input.message.listener.ProductReservationRequestListener;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductRepository;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductReservationRepository;
@@ -24,10 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import com.commerce.platform.product.service.domain.exception.ProductDomainException;
@@ -37,7 +34,6 @@ import com.commerce.platform.product.service.domain.exception.ProductDomainExcep
 @Service
 class ProductReservationRequestListenerImpl implements ProductReservationRequestListener {
 
-    private static final String EVENT_TYPE = "PRODUCT_RESERVATION_REQUEST";
     
     private final ProductDomainService productDomainService;
     private final ProductReservationDomainService productReservationDomainService;
@@ -73,7 +69,7 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
             return;
         }
         
-        String outboxEventType = ProductOutboxEventType.PRODUCT_RESERVATION_RESPONSE.getValue();
+        ServiceMessageType outboxEventType = ServiceMessageType.PRODUCT_RESERVATION_RESPONSE;
         List<Product> products = productReservationRequest.getProducts();
         ZonedDateTime requestTime = ZonedDateTime.now();
         UUID orderId = productReservationRequest.getOrderId();
@@ -100,16 +96,33 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
             ProductInboxMessage inboxMessage = ProductInboxMessage.builder()
                     .id(UUID.randomUUID())
                     .sagaId(sagaId)
-                    .eventType(EVENT_TYPE)
+                    .eventType(ServiceMessageType.PRODUCT_RESERVATION_REQUEST)
                     .payload(objectMapper.writeValueAsString(request))
                     .processedAt(ZonedDateTime.now())
                     .build();
             productInboxRepository.save(inboxMessage);
             return true;
         } catch (DataIntegrityViolationException e) {
+            log.info("Duplicate inbox message detected for saga id: {}", sagaId);
+            handleDuplicateMessage(sagaId);
             return false;
         } catch (Exception e) {
             throw new ProductDomainException("Failed to save inbox message", e);
+        }
+    }
+    
+    private void handleDuplicateMessage(UUID sagaId) {
+        ServiceMessageType outboxEventType = ServiceMessageType.PRODUCT_RESERVATION_RESPONSE;
+        Optional<ProductOutboxMessage> existingOutboxMessage = outboxHelper.findByTypeAndSagaId(outboxEventType, sagaId);
+        
+        if (existingOutboxMessage.isPresent()) {
+            log.info("Found existing outbox message for saga id: {}, republishing", sagaId);
+            ProductOutboxMessage outboxMessage = existingOutboxMessage.get();
+            outboxMessage.setOutboxStatus(OutboxStatus.STARTED);
+            outboxMessage.setProcessedAt(null);
+            outboxHelper.save(outboxMessage);
+        } else {
+            log.warn("No outbox message found for duplicate inbox message with saga id: {}", sagaId);
         }
     }
     
@@ -175,7 +188,7 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
         return createSuccessPayload(orderId, sagaId, products, requestTime);
     }
     
-    private void saveOutboxMessage(UUID sagaId, String eventType, ProductReservationResponseEventPayload responsePayload) {
+    private void saveOutboxMessage(UUID sagaId, ServiceMessageType eventType, ProductReservationResponseEventPayload responsePayload) {
         try {
             ProductOutboxMessage outboxMessage = createOutboxMessage(sagaId, eventType, responsePayload);
             outboxHelper.save(outboxMessage);
@@ -220,7 +233,7 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
                 .build();
     }
 
-    private ProductOutboxMessage createOutboxMessage(UUID sagaId, String eventType, 
+    private ProductOutboxMessage createOutboxMessage(UUID sagaId, ServiceMessageType eventType, 
                                                     ProductReservationResponseEventPayload payload) {
         return ProductOutboxMessage.builder()
                 .id(UUID.randomUUID())

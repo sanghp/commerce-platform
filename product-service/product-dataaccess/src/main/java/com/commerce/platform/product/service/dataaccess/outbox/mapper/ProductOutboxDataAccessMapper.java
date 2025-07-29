@@ -1,5 +1,7 @@
 package com.commerce.platform.product.service.dataaccess.outbox.mapper;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
+
 import com.commerce.platform.product.service.dataaccess.outbox.entity.ProductOutboxEntity;
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
 import org.springframework.stereotype.Component;

@@ -1,5 +1,7 @@
 package com.commerce.platform.product.service.dataaccess.inbox.mapper;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
+
 import com.commerce.platform.product.service.dataaccess.inbox.entity.ProductInboxEntity;
 import com.commerce.platform.product.service.domain.inbox.model.ProductInboxMessage;
 import org.springframework.stereotype.Component;

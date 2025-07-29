@@ -1,5 +1,7 @@
 package com.commerce.platform.product.service.dataaccess.outbox.adapter;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
+
 import com.commerce.platform.product.service.dataaccess.outbox.mapper.ProductOutboxDataAccessMapper;
 import com.commerce.platform.product.service.dataaccess.outbox.repository.ProductOutboxJpaRepository;
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
@@ -33,7 +35,7 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
     }
 
     @Override
-    public Optional<List<ProductOutboxMessage>> findByTypeAndOutboxStatus(String type, OutboxStatus outboxStatus) {
+    public Optional<List<ProductOutboxMessage>> findByTypeAndOutboxStatus(ServiceMessageType type, OutboxStatus outboxStatus) {
         return Optional.of(outboxJpaRepository.findByTypeAndOutboxStatus(type, outboxStatus).orElse(List.of())
                 .stream()
                 .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
@@ -41,7 +43,7 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
     }
 
     @Override
-    public Optional<ProductOutboxMessage> findByTypeAndSagaId(String type, UUID sagaId) {
+    public Optional<ProductOutboxMessage> findByTypeAndSagaId(ServiceMessageType type, UUID sagaId) {
         return outboxJpaRepository.findByTypeAndSagaId(type, sagaId)
                 .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage);
     }

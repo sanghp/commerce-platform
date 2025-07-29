@@ -1,10 +1,14 @@
 package com.commerce.platform.product.service.dataaccess.inbox.adapter;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.product.service.dataaccess.inbox.mapper.ProductInboxDataAccessMapper;
 import com.commerce.platform.product.service.dataaccess.inbox.repository.ProductInboxJpaRepository;
 import com.commerce.platform.product.service.domain.inbox.model.ProductInboxMessage;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductInboxRepository;
 import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+import java.util.UUID;
 
 @Component
 public class ProductInboxRepositoryImpl implements ProductInboxRepository {
@@ -24,5 +28,12 @@ public class ProductInboxRepositoryImpl implements ProductInboxRepository {
                 .productInboxEntityToInboxMessage(inboxJpaRepository
                         .save(inboxDataAccessMapper
                                 .productInboxMessageToInboxEntity(inboxMessage)));
+    }
+
+    @Override
+    public Optional<ProductInboxMessage> findBySagaIdAndEventType(UUID sagaId, ServiceMessageType eventType) {
+        return inboxJpaRepository
+                .findBySagaIdAndEventType(sagaId, eventType)
+                .map(inboxDataAccessMapper::productInboxEntityToInboxMessage);
     }
 } 

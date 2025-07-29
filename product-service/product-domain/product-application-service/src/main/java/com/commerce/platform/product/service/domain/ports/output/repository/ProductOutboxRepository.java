@@ -1,5 +1,7 @@
 package com.commerce.platform.product.service.domain.ports.output.repository;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
+
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
 import com.commerce.platform.outbox.OutboxStatus;
 
@@ -10,9 +12,9 @@ import java.util.UUID;
 public interface ProductOutboxRepository {
     ProductOutboxMessage save(ProductOutboxMessage outboxMessage);
 
-    Optional<List<ProductOutboxMessage>> findByTypeAndOutboxStatus(String type,
+    Optional<List<ProductOutboxMessage>> findByTypeAndOutboxStatus(ServiceMessageType type,
                                                                   OutboxStatus outboxStatus);
-    Optional<ProductOutboxMessage> findByTypeAndSagaId(String type, UUID sagaId);
+    Optional<ProductOutboxMessage> findByTypeAndSagaId(ServiceMessageType type, UUID sagaId);
     Optional<ProductOutboxMessage> findBySagaId(UUID sagaId);
     void deleteByOutboxStatus(OutboxStatus outboxStatus);
 

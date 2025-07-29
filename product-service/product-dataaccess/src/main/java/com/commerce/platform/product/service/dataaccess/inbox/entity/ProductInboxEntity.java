@@ -1,5 +1,6 @@
 package com.commerce.platform.product.service.dataaccess.inbox.entity;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,7 +20,8 @@ public class ProductInboxEntity {
     @Id
     private UUID id;
     private UUID sagaId;
-    private String eventType;
+    @Enumerated(EnumType.STRING)
+    private ServiceMessageType eventType;
     private String payload;
     private ZonedDateTime processedAt;
 
