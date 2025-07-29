@@ -3,6 +3,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `product_reservations`;
 DROP TABLE IF EXISTS `products`;
 DROP TABLE IF EXISTS `product_outbox`;
+DROP TABLE IF EXISTS `product_inbox`;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
