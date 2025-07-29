@@ -1,13 +1,14 @@
-# 🛒 Commerce Platform
+# 🛒 Commerce Platform - MSA 기반 주문 처리 시스템
 
-> ⚠️ **WIP: 현재 개발이 진행 중인 프로젝트입니다.**
+> ⚠️ **개발 진행 중**
 >
-> *   **구현 완료**: `Order Service`, `Product Service`
-> *   **주요 로직**: Saga 패턴을 이용한 재고 예약 및 결제 요청
-> *   **구현 예정**: `Payment Service`, `Customer Service` 등
+> *   **구현 완료**: `Order Service`, `Product Service`  
+> *   **핵심 기능**: 주문 생성부터 재고 예약까지의 분산 트랜잭션 처리
+> *   **구현 예정**: `Payment Service`, `Customer Service`
 
-Spring Boot 3.5.3, Java 21 기반으로 구축한 MSA 기반 커머스 플랫폼 백엔드 서비스입니다.
-본 프로젝트는 대규모 트래픽을 처리하는 커머스 환경을 가정하여 MSA 환경에서 확장성과 데이터 일관성을 확보하는 것을 목표로 설계되었습니다.
+Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼의 주문 처리 시스템입니다.
+
+이커머스의 핵심 플로우인 **주문-재고-결제** 프로세스에 집중하여 MSA 환경에서 발생하는 분산 트랜잭션 관리와 서비스 간 통신 문제를 해결하는데 중점을 두었습니다. 특히 Saga 패턴을 통한 트랜잭션 관리와 이벤트 기반 아키텍처로 서비스 간 느슨한 결합을 구현했습니다.
 
 ---
 
@@ -42,9 +43,9 @@ Spring Boot 3.5.3, Java 21 기반으로 구축한 MSA 기반 커머스 플랫폼
 
 ---
 
-## 🔄 주문 및 재고 처리 흐름 (SAGA Pattern)
+## 🔄 주문 처리 흐름 (SAGA Pattern)
 
-해당 프로젝트의 핵심 비즈니스 로직은 **Saga 패턴(Orchestration)**을 통해 구현됩니다. `Order Service`가 전체 트랜잭션의 흐름을 지휘하는 **Orchestrator** 역할을 수행하며, 서비스 간 통신은 **Kafka를 통한 비둉기 메시지 교환**으로 이루어집니다. `Order Service`는 각 요청 메시지에 `OrderStatus`를 포함하고 발행하며 메시지를 구독하는 서비스는 `OrderStatus` 상태를 기반으로 수행할 작업을 결정합니다.
+본 프로젝트는 주문 처리의 핵심 단계인 **주문 생성 → 재고 예약 → 결제 처리** 플로우를 구현합니다. **Saga 패턴(Orchestration)**을 통해 분산 트랜잭션을 관리하며 `Order Service`가 전체 흐름의 **Orchestrator** 역할을 수행합니다. 서비스 간 통신은 **Kafka를 통한 비동기 메시지 교환**으로 이루어지며 각 서비스는 `OrderStatus`를 기반으로 작업을 수행합니다.
 
 1.  **주문 생성 및 재고 예약 요청**:
     *   `Order Service`는 주문을 `PENDING` 상태로 생성하고 Saga를 시작하기 위해 `product-reservation-request` 토픽으로 메시지를 발행합니다.
