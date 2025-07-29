@@ -62,13 +62,18 @@ public class ProductOutboxHelper {
     public boolean isMessageProcessed(String type, UUID sagaId) {
         return outboxRepository.findByTypeAndSagaId(type, sagaId).isPresent();
     }
+    
+    @Transactional(readOnly = true)
+    public Optional<ProductOutboxMessage> findByTypeAndSagaId(String type, UUID sagaId) {
+        return outboxRepository.findByTypeAndSagaId(type, sagaId);
+    }
 
     @Transactional
     public void deleteProductOutboxMessageByOutboxStatus(OutboxStatus outboxStatus) {
         outboxRepository.deleteByOutboxStatus(outboxStatus);
     }
 
-    private String createPayload(ProductReservationResponseEventPayload payload) {
+    public String createPayload(ProductReservationResponseEventPayload payload) {
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {

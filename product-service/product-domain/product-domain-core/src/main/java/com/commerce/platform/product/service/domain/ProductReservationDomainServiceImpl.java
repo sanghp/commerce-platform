@@ -2,7 +2,6 @@ package com.commerce.platform.product.service.domain;
 
 import com.commerce.platform.product.service.domain.entity.ProductReservation;
 import com.commerce.platform.product.service.domain.valueobject.ProductReservationId;
-import com.commerce.platform.product.service.domain.valueobject.SagaId;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.ZonedDateTime;
@@ -14,13 +13,12 @@ import com.commerce.platform.domain.valueobject.OrderId;
 public class ProductReservationDomainServiceImpl implements ProductReservationDomainService {
 
     @Override
-    public ProductReservation createProductReservation(ProductId productId, OrderId orderId, SagaId sagaId,
+    public ProductReservation createProductReservation(ProductId productId, OrderId orderId,
                                                       Integer quantity, ZonedDateTime requestTime) {
         ProductReservation reservation = ProductReservation.builder()
                 .productReservationId(new ProductReservationId(UUID.randomUUID()))
                 .productId(productId)
                 .orderId(orderId)
-                .sagaId(sagaId)
                 .quantity(quantity)
                 .build();
         
@@ -39,7 +37,7 @@ public class ProductReservationDomainServiceImpl implements ProductReservationDo
                 reservation.getId().getValue(), requestTime);
         return reservation;
     }
-
+    
     @Override
     public ProductReservation cancelProductReservation(ProductReservation reservation, ZonedDateTime requestTime) {
         reservation.cancel();

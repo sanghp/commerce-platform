@@ -24,6 +24,10 @@ public class ProductCustomRepositoryImpl implements ProductCustomRepository {
 
     @Override
     public List<ProductEntity> findByIdsForUpdate(List<UUID> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return List.of();
+        }
+        
         List<ProductEntity> products = queryFactory
                 .selectFrom(product)
                 .where(product.id.in(productIds))
@@ -31,7 +35,7 @@ public class ProductCustomRepositoryImpl implements ProductCustomRepository {
                 .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                 .fetch();
 
-        log.info("Found {} products with X-lock for {} requested product IDs", 
+        log.debug("Found {} products with FOR UPDATE lock for {} requested product IDs", 
                 products.size(), productIds.size());
 
         return products;

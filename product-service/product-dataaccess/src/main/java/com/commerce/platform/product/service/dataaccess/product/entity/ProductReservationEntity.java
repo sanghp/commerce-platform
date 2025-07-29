@@ -21,7 +21,6 @@ public class ProductReservationEntity {
     private UUID id;
     private UUID productId;
     private UUID orderId;
-    private UUID sagaId;
     private Integer quantity; 
     @Enumerated(EnumType.STRING)
     private ProductReservationStatus status;

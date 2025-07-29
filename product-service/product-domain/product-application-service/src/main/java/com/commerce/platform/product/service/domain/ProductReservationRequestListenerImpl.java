@@ -1,11 +1,11 @@
 package com.commerce.platform.product.service.domain;
 
-
 import com.commerce.platform.domain.valueobject.OrderId;
 import com.commerce.platform.domain.valueobject.ProductReservationStatus;
 import com.commerce.platform.product.service.domain.dto.message.ProductReservationRequest;
 import com.commerce.platform.product.service.domain.entity.Product;
 import com.commerce.platform.product.service.domain.entity.ProductReservation;
+import com.commerce.platform.product.service.domain.inbox.model.ProductInboxMessage;
 import com.commerce.platform.product.service.domain.outbox.helper.ProductOutboxHelper;
 import com.commerce.platform.product.service.domain.outbox.model.ProductReservationProduct;
 import com.commerce.platform.product.service.domain.outbox.model.ProductReservationResponseEventPayload;
@@ -14,10 +14,12 @@ import com.commerce.platform.product.service.domain.outbox.ProductOutboxEventTyp
 import com.commerce.platform.product.service.domain.ports.input.message.listener.ProductReservationRequestListener;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductRepository;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductReservationRepository;
-import com.commerce.platform.product.service.domain.valueobject.SagaId;
+import com.commerce.platform.product.service.domain.ports.output.repository.ProductInboxRepository;
 import com.commerce.platform.outbox.OutboxStatus;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
@@ -26,81 +28,106 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
+import com.commerce.platform.product.service.domain.exception.ProductDomainException;
 
 @Slf4j
 @Validated
 @Service
 class ProductReservationRequestListenerImpl implements ProductReservationRequestListener {
 
+    private static final String EVENT_TYPE = "PRODUCT_RESERVATION_REQUEST";
+    
     private final ProductDomainService productDomainService;
     private final ProductReservationDomainService productReservationDomainService;
     private final ProductRepository productRepository;
     private final ProductReservationRepository productReservationRepository;
+    private final ProductInboxRepository productInboxRepository;
     private final ProductOutboxHelper outboxHelper;
+    private final ObjectMapper objectMapper;
 
     public ProductReservationRequestListenerImpl(ProductDomainService productDomainService,
                                                  ProductReservationDomainService productReservationDomainService,
                                                  ProductRepository productRepository,
                                                  ProductReservationRepository productReservationRepository,
-                                                 ProductOutboxHelper outboxHelper) {
+                                                 ProductInboxRepository productInboxRepository,
+                                                 ProductOutboxHelper outboxHelper,
+                                                 ObjectMapper objectMapper) {
         this.productDomainService = productDomainService;
         this.productReservationDomainService = productReservationDomainService;
         this.productRepository = productRepository;
         this.productReservationRepository = productReservationRepository;
+        this.productInboxRepository = productInboxRepository;
         this.outboxHelper = outboxHelper;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     @Transactional
     public void reserveOrder(ProductReservationRequest productReservationRequest) {
         UUID sagaId = productReservationRequest.getSagaId();
-        String eventType = ProductOutboxEventType.PRODUCT_RESERVATION_RESPONSE.getValue();
-
-
-        if (outboxHelper.isMessageProcessed(eventType, sagaId)) {
-            log.info("Product reservation request already processed for saga id: {}. Skipping duplicate processing.", sagaId);
+        
+        if (!saveInboxMessage(sagaId, productReservationRequest)) {
+            log.info("Message already processed for saga id: {}, skipping duplicate processing", sagaId);
             return;
         }
-
+        
+        String outboxEventType = ProductOutboxEventType.PRODUCT_RESERVATION_RESPONSE.getValue();
         List<Product> products = productReservationRequest.getProducts();
         ZonedDateTime requestTime = ZonedDateTime.now();
         UUID orderId = productReservationRequest.getOrderId();
-
+        
+        ProductReservationResponseEventPayload responsePayload;
+        
         try {
-            outboxHelper.save(createInitialOutboxMessage(sagaId, eventType));
-        } catch (DataIntegrityViolationException e) {
-            log.warn("Skipping duplicate product reservation request for saga id: {}", sagaId);
-            return; // Already processed by another thread, exit
+            responsePayload = processProductReservation(products, orderId, sagaId, requestTime);
+            log.info("Successfully processed product reservation for order id: {} with saga id: {}", orderId, sagaId);
+            
+        } catch (Exception e) {
+            log.error("Failed to process product reservation for order id: {} with saga id: {}", orderId, sagaId, e);
+            responsePayload = createFailurePayload(orderId, sagaId, products, requestTime, e.getMessage());
         }
-
-        List<UUID> productIds = products.stream()
+        
+        saveOutboxMessage(sagaId, outboxEventType, responsePayload);
+        
+        log.info("Product reservation completed for order id: {} with status: {}", 
+                orderId, responsePayload.getReservationStatus());
+    }
+    
+    private boolean saveInboxMessage(UUID sagaId, ProductReservationRequest request) {
+        try {
+            ProductInboxMessage inboxMessage = ProductInboxMessage.builder()
+                    .id(UUID.randomUUID())
+                    .sagaId(sagaId)
+                    .eventType(EVENT_TYPE)
+                    .payload(objectMapper.writeValueAsString(request))
+                    .processedAt(ZonedDateTime.now())
+                    .build();
+            productInboxRepository.save(inboxMessage);
+            return true;
+        } catch (DataIntegrityViolationException e) {
+            return false;
+        } catch (Exception e) {
+            throw new ProductDomainException("Failed to save inbox message", e);
+        }
+    }
+    
+    private ProductReservationResponseEventPayload processProductReservation(
+            List<Product> products, UUID orderId, UUID sagaId, ZonedDateTime requestTime) {
+        
+        List<UUID> sortedProductIds = products.stream()
                 .map(product -> product.getId().getValue())
+                .sorted()
                 .toList();
-        List<Product> existingProducts = productRepository.findByIdsForUpdate(productIds);
+        
+        List<Product> existingProducts = productRepository.findByIdsForUpdate(sortedProductIds);
 
         if (existingProducts.size() != products.size()) {
-            ProductReservationResponseEventPayload failurePayload = ProductReservationResponseEventPayload.builder()
-                    .orderId(orderId)
-                    .sagaId(sagaId)
-                    .reservationStatus(ProductReservationStatus.REJECTED.name())
-                    .failureMessages(List.of("Some products not found. Requested: " + products.size() + ", Found: " + existingProducts.size()))
-                    .createdAt(requestTime)
-                    .products(products.stream()
-                            .map(product -> ProductReservationProduct.builder()
-                                    .id(product.getId().getValue())
-                                    .quantity(product.getQuantity())
-                                    .build())
-                            .collect(Collectors.toList()))
-                    .build();
-
-            outboxHelper.updateOutboxMessage(failurePayload, eventType, sagaId);
-
-            log.warn("Product reservation failed for order id: {}. Requested: {} products, Found: {} products",
-                    orderId, products.size(), existingProducts.size());
-            return;
+            throw new ProductDomainException(
+                    String.format("Some products not found. Requested: %d, Found: %d", 
+                            products.size(), existingProducts.size())
+            );
         }
 
         Map<UUID, Product> existingProductMap = existingProducts.stream()
@@ -109,19 +136,33 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
                         product -> product
                 ));
 
+        for (Product requestProduct : products) {
+            Product existingProduct = existingProductMap.get(requestProduct.getId().getValue());
+            
+            if (existingProduct.getQuantity() - existingProduct.getReservedQuantity() < requestProduct.getQuantity()) {
+                throw new ProductDomainException(
+                        String.format("Insufficient stock for product %s. Available: %d, Requested: %d",
+                                existingProduct.getId().getValue(),
+                                existingProduct.getQuantity() - existingProduct.getReservedQuantity(),
+                                requestProduct.getQuantity())
+                );
+            }
+        }
+
         List<Product> reservedProducts = new ArrayList<>();
         List<ProductReservation> reservations = new ArrayList<>();
 
         for (Product requestProduct : products) {
             Product existingProduct = existingProductMap.get(requestProduct.getId().getValue());
             
-            Product reservedProduct = productDomainService.reserveProduct(existingProduct, requestProduct.getQuantity(), requestTime);
+            Product reservedProduct = productDomainService.reserveProduct(
+                    existingProduct, requestProduct.getQuantity(), requestTime
+            );
             reservedProducts.add(reservedProduct);
             
             ProductReservation reservation = productReservationDomainService.createProductReservation(
                     requestProduct.getId(), 
                     new OrderId(orderId),
-                    new SagaId(sagaId), 
                     requestProduct.getQuantity(), 
                     requestTime
             );
@@ -131,7 +172,21 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
         productRepository.saveAll(reservedProducts);
         productReservationRepository.saveAll(reservations);
 
-        ProductReservationResponseEventPayload successPayload = ProductReservationResponseEventPayload.builder()
+        return createSuccessPayload(orderId, sagaId, products, requestTime);
+    }
+    
+    private void saveOutboxMessage(UUID sagaId, String eventType, ProductReservationResponseEventPayload responsePayload) {
+        try {
+            ProductOutboxMessage outboxMessage = createOutboxMessage(sagaId, eventType, responsePayload);
+            outboxHelper.save(outboxMessage);
+        } catch (DataIntegrityViolationException e) {
+            log.debug("Outbox message already exists for saga id: {}", sagaId);
+        }
+    }
+    
+    private ProductReservationResponseEventPayload createSuccessPayload(
+            UUID orderId, UUID sagaId, List<Product> products, ZonedDateTime requestTime) {
+        return ProductReservationResponseEventPayload.builder()
                 .orderId(orderId)
                 .sagaId(sagaId)
                 .reservationStatus(ProductReservationStatus.APPROVED.name())
@@ -144,20 +199,37 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
                                 .build())
                         .collect(Collectors.toList()))
                 .build();
+    }
+    
+    private ProductReservationResponseEventPayload createFailurePayload(
+            UUID orderId, UUID sagaId, List<Product> products, 
+            ZonedDateTime requestTime, String failureMessage) {
         
-        outboxHelper.updateOutboxMessage(successPayload, eventType, sagaId);
-
-        log.info("Order is reserved with id: {} at {}", productReservationRequest.getOrderId(), requestTime);
+        return ProductReservationResponseEventPayload.builder()
+                .orderId(orderId)
+                .sagaId(sagaId)
+                .reservationStatus(ProductReservationStatus.REJECTED.name())
+                .failureMessages(List.of(failureMessage))
+                .createdAt(requestTime)
+                .products(products.stream()
+                        .map(product -> ProductReservationProduct.builder()
+                                .id(product.getId().getValue())
+                                .quantity(product.getQuantity())
+                                .build())
+                        .collect(Collectors.toList()))
+                .build();
     }
 
-    private ProductOutboxMessage createInitialOutboxMessage(UUID sagaId, String eventType) {
+    private ProductOutboxMessage createOutboxMessage(UUID sagaId, String eventType, 
+                                                    ProductReservationResponseEventPayload payload) {
         return ProductOutboxMessage.builder()
                 .id(UUID.randomUUID())
                 .sagaId(sagaId)
                 .createdAt(ZonedDateTime.now())
                 .type(eventType)
-                .payload("{}")
+                .payload(outboxHelper.createPayload(payload))
                 .outboxStatus(OutboxStatus.STARTED)
                 .build();
+
     }
 }

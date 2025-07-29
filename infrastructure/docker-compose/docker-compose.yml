@@ -17,6 +17,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: root
+      TZ: UTC
     ports:
       - "13306:3306"
 

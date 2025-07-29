@@ -30,12 +30,16 @@ spring:
     properties:
       hibernate:
         default_schema: product
+        dialect: org.hibernate.dialect.MySQL8Dialect
   datasource:
-    url: jdbc:mysql://localhost:13306/product?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    url: jdbc:mysql://localhost:13306/product?allowPublicKeyRetrieval=true&useSSL=false&createDatabaseIfNotExist=true&serverTimezone=UTC
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
-    platform: mysql
+    hikari:
+      maximum-pool-size: 20
+      connection-test-query: SELECT 1
+      pool-name: ProductServiceHikariPool
   sql:
     init:
       mode: always

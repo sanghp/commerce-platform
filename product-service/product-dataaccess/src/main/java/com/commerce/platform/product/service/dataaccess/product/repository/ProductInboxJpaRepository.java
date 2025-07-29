@@ -9,13 +9,11 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface ProductReservationJpaRepository extends JpaRepository<ProductReservationEntity, UUID> {
+public interface ProductInboxJpaRepository extends JpaRepository<ProductReservationEntity, UUID> {
 
     List<ProductReservationEntity> findByProductIdAndStatusIn(UUID productId, List<ProductReservationStatus> statuses);
 
     List<ProductReservationEntity> findByOrderId(UUID orderId);
-
-    List<ProductReservationEntity> findBySagaId(UUID sagaId);
 
     List<ProductReservationEntity> findByProductId(UUID productId);
 } 

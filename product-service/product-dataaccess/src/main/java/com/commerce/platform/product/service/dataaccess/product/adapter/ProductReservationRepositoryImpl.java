@@ -4,7 +4,7 @@ import com.commerce.platform.domain.valueobject.OrderId;
 import com.commerce.platform.domain.valueobject.ProductId;
 import com.commerce.platform.product.service.dataaccess.product.entity.ProductReservationEntity;
 import com.commerce.platform.product.service.dataaccess.product.mapper.ProductReservationDataAccessMapper;
-import com.commerce.platform.product.service.dataaccess.product.repository.ProductReservationJpaRepository;
+import com.commerce.platform.product.service.dataaccess.product.repository.ProductInboxJpaRepository;
 import com.commerce.platform.product.service.domain.entity.ProductReservation;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductReservationRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -14,16 +14,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.commerce.platform.product.service.domain.valueobject.SagaId;
-
 @Slf4j
 @Component
 public class ProductReservationRepositoryImpl implements ProductReservationRepository {
 
-    private final ProductReservationJpaRepository productReservationJpaRepository;
+    private final ProductInboxJpaRepository productReservationJpaRepository;
     private final ProductReservationDataAccessMapper productReservationDataAccessMapper;
 
-    public ProductReservationRepositoryImpl(ProductReservationJpaRepository productReservationJpaRepository,
+    public ProductReservationRepositoryImpl(ProductInboxJpaRepository productReservationJpaRepository,
                                             ProductReservationDataAccessMapper productReservationDataAccessMapper) {
         this.productReservationJpaRepository = productReservationJpaRepository;
         this.productReservationDataAccessMapper = productReservationDataAccessMapper;
@@ -56,12 +54,6 @@ public class ProductReservationRepositoryImpl implements ProductReservationRepos
     @Override
     public List<ProductReservation> findByOrderId(OrderId orderId) {
         List<ProductReservationEntity> productReservationEntities = productReservationJpaRepository.findByOrderId(orderId.getValue());
-        return productReservationDataAccessMapper.productReservationEntitiesToProductReservations(productReservationEntities);
-    }
-
-    @Override
-    public List<ProductReservation> findBySagaId(SagaId sagaId) {
-        List<ProductReservationEntity> productReservationEntities = productReservationJpaRepository.findBySagaId(sagaId.getValue());
         return productReservationDataAccessMapper.productReservationEntitiesToProductReservations(productReservationEntities);
     }
 

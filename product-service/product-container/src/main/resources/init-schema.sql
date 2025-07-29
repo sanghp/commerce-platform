@@ -23,7 +23,6 @@ CREATE TABLE `product_reservations`
     id          BINARY(16)     NOT NULL,
     product_id  BINARY(16)     NOT NULL,
     order_id    BINARY(16)     NOT NULL,
-    saga_id     BINARY(16)     NOT NULL,
     quantity    INT            NOT NULL,
     status      ENUM('PENDING', 'CONFIRMED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
     created_at  TIMESTAMP(6)   NOT NULL,
@@ -32,8 +31,8 @@ CREATE TABLE `product_reservations`
     CONSTRAINT `fk_product_reservations_products` FOREIGN KEY (product_id) REFERENCES `products` (id) ON DELETE CASCADE
 );
 
+CREATE INDEX `idx_product_reservations_product_id` ON `product_reservations` (product_id);
 CREATE INDEX `idx_product_reservations_order_id` ON `product_reservations` (order_id);
-CREATE INDEX `idx_product_reservations_saga_id` ON `product_reservations` (saga_id);
 
 CREATE TABLE `product_outbox`
 (
@@ -49,3 +48,14 @@ CREATE TABLE `product_outbox`
 );
 
 CREATE UNIQUE INDEX `product_outbox_saga_id_type_unique_index` ON `product_outbox` (saga_id, type);
+
+CREATE TABLE `product_inbox`
+(
+    id            BINARY(16)   NOT NULL,
+    saga_id       BINARY(16)   NOT NULL,
+    event_type    VARCHAR(255) NOT NULL,
+    payload       JSON         NOT NULL,
+    processed_at  TIMESTAMP(6) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT `uk_product_inbox_saga_id_event_type` UNIQUE (saga_id, event_type)
+);

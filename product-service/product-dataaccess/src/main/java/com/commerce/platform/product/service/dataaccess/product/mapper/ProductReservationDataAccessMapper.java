@@ -3,7 +3,6 @@ package com.commerce.platform.product.service.dataaccess.product.mapper;
 import com.commerce.platform.product.service.dataaccess.product.entity.ProductReservationEntity;
 import com.commerce.platform.product.service.domain.entity.ProductReservation;
 import com.commerce.platform.product.service.domain.valueobject.ProductReservationId;
-import com.commerce.platform.product.service.domain.valueobject.SagaId;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -19,7 +18,6 @@ public class ProductReservationDataAccessMapper {
                 .id(productReservation.getId().getValue())
                 .productId(productReservation.getProductId().getValue())
                 .orderId(productReservation.getOrderId().getValue())
-                .sagaId(productReservation.getSagaId().getValue())
                 .quantity(productReservation.getQuantity())
                 .status(productReservation.getStatus())
                 .createdAt(productReservation.getCreatedAt())
@@ -32,7 +30,6 @@ public class ProductReservationDataAccessMapper {
                 .productReservationId(new ProductReservationId(productReservationEntity.getId()))
                 .productId(new ProductId(productReservationEntity.getProductId()))
                 .orderId(new OrderId(productReservationEntity.getOrderId()))
-                .sagaId(new SagaId(productReservationEntity.getSagaId()))
                 .quantity(productReservationEntity.getQuantity())
                 .build();
     }
@@ -40,6 +37,6 @@ public class ProductReservationDataAccessMapper {
     public List<ProductReservation> productReservationEntitiesToProductReservations(List<ProductReservationEntity> productReservationEntities) {
         return productReservationEntities.stream()
                 .map(this::productReservationEntityToProductReservation)
-                .collect(Collectors.toList());
+                .toList();
     }
 } 
