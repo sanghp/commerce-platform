@@ -1,6 +1,7 @@
 package com.commerce.platform.product.service.dataaccess.inbox.entity;
 
 import com.commerce.platform.domain.event.ServiceMessageType;
+import com.commerce.platform.product.service.domain.inbox.model.InboxStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,15 +17,31 @@ import java.util.UUID;
 @Table(name = "product_inbox")
 @Entity
 public class ProductInboxEntity {
-
+    
     @Id
     private UUID id;
+    
     private UUID sagaId;
+    
     @Enumerated(EnumType.STRING)
     private ServiceMessageType eventType;
+    
     private String payload;
+    
+    @Enumerated(EnumType.STRING)
+    private InboxStatus status;
+    
+    private ZonedDateTime receivedAt;
+    
     private ZonedDateTime processedAt;
-
+    
+    private int retryCount;
+    
+    private String errorMessage;
+    
+    @Version
+    private int version;
+    
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -32,9 +49,9 @@ public class ProductInboxEntity {
         ProductInboxEntity that = (ProductInboxEntity) o;
         return id.equals(that.id);
     }
-
+    
     @Override
     public int hashCode() {
         return Objects.hash(id);
     }
-} 
+}
