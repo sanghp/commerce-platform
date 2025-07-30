@@ -16,12 +16,9 @@ public class InboxMessageScheduler {
     private static final int MAX_RETRY_COUNT = 3;
     private static final int BATCH_SIZE = 100;
     
-    private final OrderInboxRepository orderInboxRepository;
     private final InboxMessageHelper inboxMessageHelper;
     
-    public InboxMessageScheduler(OrderInboxRepository orderInboxRepository,
-                                 InboxMessageHelper inboxMessageHelper) {
-        this.orderInboxRepository = orderInboxRepository;
+    public InboxMessageScheduler(InboxMessageHelper inboxMessageHelper) {
         this.inboxMessageHelper = inboxMessageHelper;
     }
     
