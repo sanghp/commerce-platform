@@ -10,11 +10,16 @@ import com.commerce.platform.order.service.domain.ports.output.repository.OrderI
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.commerce.platform.order.service.domain.entity.Order.FAILURE_MESSAGE_DELIMITER;
 
@@ -34,63 +39,53 @@ public class InboxMessageHelper {
         this.objectMapper = objectMapper;
     }
     
-    @Transactional
     public void processInboxMessages(int batchSize) {
-        // Fetch and lock messages in the same transaction
-        List<OrderInboxMessage> messages = orderInboxRepository
-                .findByStatusOrderByReceivedAt(InboxStatus.RECEIVED, batchSize);
-        
-        if (messages.isEmpty()) {
-            return;
-        }
-        
-        log.debug("Processing {} inbox messages", messages.size());
-        
-        ZonedDateTime processedAt = ZonedDateTime.now();
-        List<OrderInboxMessage> messagesToUpdate = new ArrayList<>();
-        
-        // First, mark all messages as PROCESSING
-        messages.forEach(message -> {
-            message.setStatus(InboxStatus.PROCESSING);
-            messagesToUpdate.add(message);
-        });
-        orderInboxRepository.saveAll(messagesToUpdate);
-        messagesToUpdate.clear();
-        
-        // Process each message
-        for (OrderInboxMessage inboxMessage : messages) {
-            try {
-                if (inboxMessage.getEventType() == ServiceMessageType.PRODUCT_RESERVATION_RESPONSE) {
-                    processProductReservationResponse(inboxMessage);
-                }
-                
-                inboxMessage.setStatus(InboxStatus.PROCESSED);
-                inboxMessage.setProcessedAt(processedAt);
-                messagesToUpdate.add(inboxMessage);
-                
-                log.info("Successfully processed inbox message: {} for saga: {}", 
-                        inboxMessage.getId(), inboxMessage.getSagaId());
-                
-            } catch (Exception e) {
-                log.error("Failed to process inbox message: {}", inboxMessage.getId(), e);
-                
-                inboxMessage.setStatus(InboxStatus.FAILED);
-                inboxMessage.setErrorMessage(e.getMessage());
-                inboxMessage.setRetryCount(inboxMessage.getRetryCount() + 1);
-                messagesToUpdate.add(inboxMessage);
+        for (int i = 0; i < batchSize; i++) {
+            if (!processNextMessage()) {
+                break;
             }
         }
+    }
+    
+    @Transactional
+    public boolean processNextMessage() {
+        List<OrderInboxMessage> messages = orderInboxRepository
+                .findByStatusOrderByReceivedAtWithSkipLock(InboxStatus.RECEIVED, 1);
         
-        // Bulk update all messages
-        if (!messagesToUpdate.isEmpty()) {
-            orderInboxRepository.saveAll(messagesToUpdate);
+        if (messages.isEmpty()) {
+            return false;
         }
+        
+        OrderInboxMessage inboxMessage = messages.getFirst();
+        ZonedDateTime processedAt = ZonedDateTime.now();
+        
+        try {
+            if (inboxMessage.getEventType() == ServiceMessageType.PRODUCT_RESERVATION_RESPONSE) {
+                processProductReservationResponse(inboxMessage);
+            }
+            
+            inboxMessage.setStatus(InboxStatus.PROCESSED);
+            inboxMessage.setProcessedAt(processedAt);
+            
+            log.info("Successfully processed inbox message: {} for saga: {}", 
+                    inboxMessage.getId(), inboxMessage.getSagaId());
+            
+        } catch (Exception e) {
+            log.error("Failed to process inbox message: {}", inboxMessage.getId(), e);
+            
+            inboxMessage.setStatus(InboxStatus.FAILED);
+            inboxMessage.setErrorMessage(e.getMessage());
+            inboxMessage.setRetryCount(inboxMessage.getRetryCount() + 1);
+        }
+        
+        orderInboxRepository.save(inboxMessage);
+        return true;
     }
     
     @Transactional
     public void retryFailedMessages(int maxRetryCount, int batchSize) {
         List<OrderInboxMessage> failedMessages = orderInboxRepository
-                .findByStatusAndRetryCountLessThanOrderByReceivedAt(InboxStatus.FAILED, maxRetryCount, batchSize);
+                .findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus.FAILED, maxRetryCount, batchSize);
         
         if (!failedMessages.isEmpty()) {
             log.info("Retrying {} failed messages", failedMessages.size());

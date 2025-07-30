@@ -53,7 +53,7 @@ public class OrderInboxRepositoryImpl implements OrderInboxRepository {
     }
     
     @Override
-    public List<OrderInboxMessage> findByStatusOrderByReceivedAt(InboxStatus status, int limit) {
+    public List<OrderInboxMessage> findByStatusOrderByReceivedAtWithSkipLock(InboxStatus status, int limit) {
         return orderInboxJpaRepository.findByStatusOrderByReceivedAt(status, PageRequest.of(0, limit))
                 .stream()
                 .map(orderInboxDataAccessMapper::orderInboxEntityToOrderInboxMessage)
@@ -61,7 +61,7 @@ public class OrderInboxRepositoryImpl implements OrderInboxRepository {
     }
     
     @Override
-    public List<OrderInboxMessage> findByStatusAndRetryCountLessThanOrderByReceivedAt(InboxStatus status, int maxRetryCount, int limit) {
+    public List<OrderInboxMessage> findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus status, int maxRetryCount, int limit) {
         return orderInboxJpaRepository.findByStatusAndRetryCountLessThanOrderByReceivedAt(
                         status, maxRetryCount, PageRequest.of(0, limit))
                 .stream()

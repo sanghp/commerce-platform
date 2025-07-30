@@ -8,6 +8,7 @@ import com.commerce.platform.outbox.OutboxStatus;
 import com.commerce.platform.product.service.domain.ProductDomainService;
 import com.commerce.platform.product.service.domain.ProductReservationDomainService;
 import com.commerce.platform.product.service.domain.dto.message.ProductReservationRequest;
+import com.commerce.platform.product.service.domain.entity.Product;
 import com.commerce.platform.product.service.domain.entity.ProductReservation;
 import com.commerce.platform.product.service.domain.exception.ProductDomainException;
 import com.commerce.platform.product.service.domain.inbox.model.InboxStatus;
@@ -57,63 +58,54 @@ public class InboxMessageHelper {
         this.objectMapper = objectMapper;
     }
     
-    @Transactional
     public void processInboxMessages(int batchSize) {
-        // Fetch and lock messages in the same transaction
-        List<ProductInboxMessage> messages = productInboxRepository
-                .findByStatusOrderByReceivedAt(InboxStatus.RECEIVED, batchSize);
-        
-        if (messages.isEmpty()) {
-            return;
-        }
-        
-        log.debug("Processing {} inbox messages", messages.size());
-        
-        ZonedDateTime processedAt = ZonedDateTime.now();
-        List<ProductInboxMessage> messagesToUpdate = new ArrayList<>();
-        
-        // First, mark all messages as PROCESSING
-        messages.forEach(message -> {
-            message.setStatus(InboxStatus.PROCESSING);
-            messagesToUpdate.add(message);
-        });
-        productInboxRepository.saveAll(messagesToUpdate);
-        messagesToUpdate.clear();
-        
-        // Process each message
-        for (ProductInboxMessage inboxMessage : messages) {
-            try {
-                if (inboxMessage.getEventType() == ServiceMessageType.PRODUCT_RESERVATION_REQUEST) {
-                    processProductReservationRequest(inboxMessage);
-                }
-                
-                inboxMessage.setStatus(InboxStatus.PROCESSED);
-                inboxMessage.setProcessedAt(processedAt);
-                messagesToUpdate.add(inboxMessage);
-                
-                log.info("Successfully processed inbox message: {} for saga: {}", 
-                        inboxMessage.getId(), inboxMessage.getSagaId());
-                
-            } catch (Exception e) {
-                log.error("Failed to process inbox message: {}", inboxMessage.getId(), e);
-                
-                inboxMessage.setStatus(InboxStatus.FAILED);
-                inboxMessage.setErrorMessage(e.getMessage());
-                inboxMessage.setRetryCount(inboxMessage.getRetryCount() + 1);
-                messagesToUpdate.add(inboxMessage);
+        for (int i = 0; i < batchSize; i++) {
+            if (!processNextMessage()) {
+                break;
             }
         }
+    }
+    
+    @Transactional
+    public boolean processNextMessage() {
+        // 메시지 조회
+        List<ProductInboxMessage> messages = productInboxRepository
+                .findByStatusOrderByReceivedAtWithSkipLock(InboxStatus.RECEIVED, 1);
         
-        // Bulk update all messages
-        if (!messagesToUpdate.isEmpty()) {
-            productInboxRepository.saveAll(messagesToUpdate);
+        if (messages.isEmpty()) {
+            return false;
         }
+        
+        ProductInboxMessage inboxMessage = messages.getFirst();
+        ZonedDateTime processedAt = ZonedDateTime.now();
+        
+        try {
+            if (inboxMessage.getEventType() == ServiceMessageType.PRODUCT_RESERVATION_REQUEST) {
+                processProductReservationRequest(inboxMessage);
+            }
+            
+            inboxMessage.setStatus(InboxStatus.PROCESSED);
+            inboxMessage.setProcessedAt(processedAt);
+            
+            log.info("Successfully processed inbox message: {} for saga: {}", 
+                    inboxMessage.getId(), inboxMessage.getSagaId());
+            
+        } catch (Exception e) {
+            log.error("Failed to process inbox message: {}", inboxMessage.getId(), e);
+            
+            inboxMessage.setStatus(InboxStatus.FAILED);
+            inboxMessage.setErrorMessage(e.getMessage());
+            inboxMessage.setRetryCount(inboxMessage.getRetryCount() + 1);
+        }
+        
+        productInboxRepository.save(inboxMessage);
+        return true;
     }
     
     @Transactional
     public void retryFailedMessages(int maxRetryCount, int batchSize) {
         List<ProductInboxMessage> failedMessages = productInboxRepository
-                .findByStatusAndRetryCountLessThanOrderByReceivedAt(InboxStatus.FAILED, maxRetryCount, batchSize);
+                .findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus.FAILED, maxRetryCount, batchSize);
         
         if (!failedMessages.isEmpty()) {
             log.info("Retrying {} failed messages", failedMessages.size());
@@ -133,7 +125,7 @@ public class InboxMessageHelper {
         
         UUID sagaId = request.getSagaId();
         ServiceMessageType outboxEventType = ServiceMessageType.PRODUCT_RESERVATION_RESPONSE;
-        List<com.commerce.platform.product.service.domain.entity.Product> products = request.getProducts();
+        List<Product> products = request.getProducts();
         ZonedDateTime requestTime = ZonedDateTime.now();
         UUID orderId = request.getOrderId();
         
@@ -151,14 +143,14 @@ public class InboxMessageHelper {
     }
     
     private ProductReservationResponseEventPayload processProductReservation(
-            List<com.commerce.platform.product.service.domain.entity.Product> products, UUID orderId, UUID sagaId, ZonedDateTime requestTime) {
+            List<Product> products, UUID orderId, UUID sagaId, ZonedDateTime requestTime) {
         
         List<UUID> sortedProductIds = products.stream()
                 .map(product -> product.getId().getValue())
                 .sorted()
                 .toList();
         
-        List<com.commerce.platform.product.service.domain.entity.Product> existingProducts = 
+        List<Product> existingProducts =
                 productRepository.findByIdsForUpdate(sortedProductIds);
 
         if (existingProducts.size() != products.size()) {
@@ -168,14 +160,14 @@ public class InboxMessageHelper {
             );
         }
 
-        Map<UUID, com.commerce.platform.product.service.domain.entity.Product> existingProductMap = existingProducts.stream()
+        Map<UUID, Product> existingProductMap = existingProducts.stream()
                 .collect(Collectors.toMap(
                         product -> product.getId().getValue(),
                         product -> product
                 ));
 
-        for (com.commerce.platform.product.service.domain.entity.Product requestProduct : products) {
-            com.commerce.platform.product.service.domain.entity.Product existingProduct = 
+        for (Product requestProduct : products) {
+            Product existingProduct =
                     existingProductMap.get(requestProduct.getId().getValue());
             
             if (existingProduct.getQuantity() - existingProduct.getReservedQuantity() < requestProduct.getQuantity()) {
@@ -188,14 +180,14 @@ public class InboxMessageHelper {
             }
         }
 
-        List<com.commerce.platform.product.service.domain.entity.Product> reservedProducts = new ArrayList<>();
+        List<Product> reservedProducts = new ArrayList<>();
         List<ProductReservation> reservations = new ArrayList<>();
 
-        for (com.commerce.platform.product.service.domain.entity.Product requestProduct : products) {
-            com.commerce.platform.product.service.domain.entity.Product existingProduct = 
+        for (Product requestProduct : products) {
+            Product existingProduct =
                     existingProductMap.get(requestProduct.getId().getValue());
             
-            com.commerce.platform.product.service.domain.entity.Product reservedProduct = productDomainService.reserveProduct(
+            Product reservedProduct = productDomainService.reserveProduct(
                     existingProduct, requestProduct.getQuantity(), requestTime
             );
             reservedProducts.add(reservedProduct);
@@ -225,7 +217,7 @@ public class InboxMessageHelper {
     }
     
     private ProductReservationResponseEventPayload createSuccessPayload(
-            UUID orderId, UUID sagaId, List<com.commerce.platform.product.service.domain.entity.Product> products, ZonedDateTime requestTime) {
+            UUID orderId, UUID sagaId, List<Product> products, ZonedDateTime requestTime) {
         return ProductReservationResponseEventPayload.builder()
                 .orderId(orderId)
                 .sagaId(sagaId)
@@ -242,7 +234,7 @@ public class InboxMessageHelper {
     }
     
     private ProductReservationResponseEventPayload createFailurePayload(
-            UUID orderId, UUID sagaId, List<com.commerce.platform.product.service.domain.entity.Product> products, 
+            UUID orderId, UUID sagaId, List<Product> products,
             ZonedDateTime requestTime, String failureMessage) {
         
         return ProductReservationResponseEventPayload.builder()

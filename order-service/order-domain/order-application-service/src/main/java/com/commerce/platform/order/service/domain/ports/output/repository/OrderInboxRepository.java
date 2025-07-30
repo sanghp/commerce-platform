@@ -12,6 +12,6 @@ public interface OrderInboxRepository {
     OrderInboxMessage save(OrderInboxMessage orderInboxMessage);
     List<OrderInboxMessage> saveAll(List<OrderInboxMessage> orderInboxMessages);
     Optional<OrderInboxMessage> findBySagaIdAndEventType(UUID sagaId, ServiceMessageType eventType);
-    List<OrderInboxMessage> findByStatusOrderByReceivedAt(InboxStatus status, int limit);
-    List<OrderInboxMessage> findByStatusAndRetryCountLessThanOrderByReceivedAt(InboxStatus status, int maxRetryCount, int limit);
+    List<OrderInboxMessage> findByStatusOrderByReceivedAtWithSkipLock(InboxStatus status, int limit); // FOR UPDATE SKIP LOCKED
+    List<OrderInboxMessage> findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus status, int maxRetryCount, int limit); // FOR UPDATE SKIP LOCKED
 }
