@@ -1,6 +1,5 @@
-package com.commerce.platform.product.service.dataaccess.outbox.entity;
+package com.commerce.platform.order.service.dataaccess.outbox.entity;
 
-import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.outbox.OutboxStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -14,9 +13,9 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "product_outbox")
+@Table(name = "order_outbox")
 @Entity
-public class ProductOutboxEntity {
+public class OrderOutboxEntity {
 
     @Id
     private UUID id;
@@ -24,8 +23,7 @@ public class ProductOutboxEntity {
     private ZonedDateTime createdAt;
     private ZonedDateTime fetchedAt;
     private ZonedDateTime processedAt;
-    @Enumerated(EnumType.STRING)
-    private ServiceMessageType type;
+    private String type;
     private String payload;
     @Enumerated(EnumType.STRING)
     private OutboxStatus outboxStatus;
@@ -36,7 +34,7 @@ public class ProductOutboxEntity {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ProductOutboxEntity that = (ProductOutboxEntity) o;
+        OrderOutboxEntity that = (OrderOutboxEntity) o;
         return id.equals(that.id);
     }
 
@@ -44,4 +42,4 @@ public class ProductOutboxEntity {
     public int hashCode() {
         return Objects.hash(id);
     }
-} 
+}

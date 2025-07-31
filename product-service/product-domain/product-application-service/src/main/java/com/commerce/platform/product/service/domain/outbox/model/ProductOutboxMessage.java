@@ -18,6 +18,8 @@ public class ProductOutboxMessage {
     private final UUID sagaId;
     private final ZonedDateTime createdAt;
     @Setter
+    private ZonedDateTime fetchedAt;
+    @Setter
     private ZonedDateTime processedAt;
     private final ServiceMessageType type;
     @Setter
