@@ -11,9 +11,9 @@ import com.commerce.platform.order.service.domain.ports.output.message.publisher
 import com.commerce.platform.outbox.OutboxStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import com.commerce.platform.order.service.domain.outbox.scheduler.OrderOutboxHelper;
 
 import java.util.UUID;
-import java.util.function.BiConsumer;
 
 @Slf4j
 @Component
@@ -23,20 +23,22 @@ public class ProductReservationRequestKafkaMessagePublisher implements ProductRe
     private final KafkaProducer<UUID, ProductReservationRequestAvroModel> kafkaProducer;
     private final OrderServiceConfigData orderServiceConfigData;
     private final KafkaMessageHelper kafkaMessageHelper;
+    private final OrderOutboxHelper orderOutboxHelper;
 
     public ProductReservationRequestKafkaMessagePublisher(OrderMessagingDataMapper orderMessagingDataMapper,
                                                           KafkaProducer<UUID, ProductReservationRequestAvroModel> kafkaProducer,
                                                           OrderServiceConfigData orderServiceConfigData,
-                                                          KafkaMessageHelper kafkaMessageHelper) {
+                                                          KafkaMessageHelper kafkaMessageHelper,
+                                                          OrderOutboxHelper orderOutboxHelper) {
         this.orderMessagingDataMapper = orderMessagingDataMapper;
         this.kafkaProducer = kafkaProducer;
         this.orderServiceConfigData = orderServiceConfigData;
         this.kafkaMessageHelper = kafkaMessageHelper;
+        this.orderOutboxHelper = orderOutboxHelper;
     }
 
     @Override
-    public void publish(OrderOutboxMessage orderOutboxMessage,
-                        BiConsumer<OrderOutboxMessage, OutboxStatus> outboxCallback) {
+    public void publish(OrderOutboxMessage orderOutboxMessage) {
         ProductReservationEventPayload productReservationEventPayload =
                 kafkaMessageHelper.getOrderEventPayload(orderOutboxMessage.getPayload(),
                         ProductReservationEventPayload.class);
@@ -57,7 +59,10 @@ public class ProductReservationRequestKafkaMessagePublisher implements ProductRe
                     .whenComplete(kafkaMessageHelper.getKafkaCallback(orderServiceConfigData.getProductReservationRequestTopicName(),
                             productReservationRequestAvroModel,
                             orderOutboxMessage,
-                            outboxCallback,
+                            (message, status) -> {
+                                log.info("Kafka callback invoked for message id: {} with status: {}", message.getId(), status);
+                                orderOutboxHelper.updateOutboxMessageStatus(message.getId(), status);
+                            },
                             productReservationEventPayload.getOrderId(),
                             "ProductReservationRequestAvroModel"));
 
@@ -67,6 +72,7 @@ public class ProductReservationRequestKafkaMessagePublisher implements ProductRe
             log.error("Error while sending ProductReservationEventPayload" +
                             " to kafka with order id: {} and saga id: {}, error: {}",
                     productReservationEventPayload.getOrderId(), sagaId, e.getMessage());
+            orderOutboxHelper.updateOutboxMessageStatus(orderOutboxMessage.getId(), OutboxStatus.FAILED);
         }
     }
 }

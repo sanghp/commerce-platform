@@ -11,9 +11,9 @@ import com.commerce.platform.order.service.domain.ports.output.message.publisher
 import com.commerce.platform.outbox.OutboxStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import com.commerce.platform.order.service.domain.outbox.scheduler.OrderOutboxHelper;
 
 import java.util.UUID;
-import java.util.function.BiConsumer;
 
 @Slf4j
 @Component
@@ -23,20 +23,22 @@ public class PaymentRequestKafkaMessagePublisher implements PaymentRequestMessag
     private final KafkaProducer<UUID, PaymentRequestAvroModel> kafkaProducer;
     private final OrderServiceConfigData orderServiceConfigData;
     private final KafkaMessageHelper kafkaMessageHelper;
+    private final OrderOutboxHelper orderOutboxHelper;
 
     public PaymentRequestKafkaMessagePublisher(OrderMessagingDataMapper orderMessagingDataMapper,
                                            KafkaProducer<UUID, PaymentRequestAvroModel> kafkaProducer,
                                            OrderServiceConfigData orderServiceConfigData,
-                                           KafkaMessageHelper kafkaMessageHelper) {
+                                           KafkaMessageHelper kafkaMessageHelper,
+                                           OrderOutboxHelper orderOutboxHelper) {
         this.orderMessagingDataMapper = orderMessagingDataMapper;
         this.kafkaProducer = kafkaProducer;
         this.orderServiceConfigData = orderServiceConfigData;
         this.kafkaMessageHelper = kafkaMessageHelper;
+        this.orderOutboxHelper = orderOutboxHelper;
     }
 
     @Override
-    public void publish(OrderOutboxMessage orderOutboxMessage,
-                        BiConsumer<OrderOutboxMessage, OutboxStatus> outboxCallback) {
+    public void publish(OrderOutboxMessage orderOutboxMessage) {
         OrderPaymentEventPayload orderPaymentEventPayload =
                 kafkaMessageHelper.getOrderEventPayload(orderOutboxMessage.getPayload(),
                         OrderPaymentEventPayload.class);
@@ -57,7 +59,10 @@ public class PaymentRequestKafkaMessagePublisher implements PaymentRequestMessag
                     .whenComplete(kafkaMessageHelper.getKafkaCallback(orderServiceConfigData.getPaymentRequestTopicName(),
                             paymentRequestAvroModel,
                             orderOutboxMessage,
-                            outboxCallback,
+                            (message, status) -> {
+                                log.info("Kafka callback invoked for message id: {} with status: {}", message.getId(), status);
+                                orderOutboxHelper.updateOutboxMessageStatus(message.getId(), status);
+                            },
                             orderPaymentEventPayload.getOrderId(),
                             "PaymentRequestAvroModel"));
 
@@ -67,6 +72,7 @@ public class PaymentRequestKafkaMessagePublisher implements PaymentRequestMessag
             log.error("Error while sending OrderPaymentEventPayload" +
                             " to kafka with order id: {} and saga id: {}, error: {}",
                     orderPaymentEventPayload.getOrderId(), sagaId, e.getMessage());
+            orderOutboxHelper.updateOutboxMessageStatus(orderOutboxMessage.getId(), OutboxStatus.FAILED);
         }
 
 

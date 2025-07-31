@@ -11,9 +11,9 @@ import com.commerce.platform.product.service.messaging.mapper.ProductMessagingDa
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import com.commerce.platform.kafka.producer.service.KafkaProducer;
+import com.commerce.platform.product.service.domain.outbox.helper.ProductOutboxHelper;
 
 import java.util.UUID;
-import java.util.function.BiConsumer;
 
 @Slf4j
 @Component
@@ -23,20 +23,22 @@ public class ProductReservationEventKafkaPublisher implements ProductReservation
     private final KafkaProducer<UUID, ProductReservationResponseAvroModel> kafkaProducer;
     private final ProductMessagingDataMapper productMessagingDataMapper;
     private final KafkaMessageHelper kafkaMessageHelper;
+    private final ProductOutboxHelper productOutboxHelper;
 
     public ProductReservationEventKafkaPublisher(ProductServiceConfigData productServiceConfigData,
                                                  KafkaProducer<UUID, ProductReservationResponseAvroModel> kafkaProducer,
                                                  ProductMessagingDataMapper productMessagingDataMapper,
-                                                 KafkaMessageHelper kafkaMessageHelper) {
+                                                 KafkaMessageHelper kafkaMessageHelper,
+                                                 ProductOutboxHelper productOutboxHelper) {
         this.productServiceConfigData = productServiceConfigData;
         this.kafkaProducer = kafkaProducer;
         this.productMessagingDataMapper = productMessagingDataMapper;
         this.kafkaMessageHelper = kafkaMessageHelper;
+        this.productOutboxHelper = productOutboxHelper;
     }
 
     @Override
-    public void publish(ProductOutboxMessage outboxMessage,
-                        BiConsumer<ProductOutboxMessage, OutboxStatus> outboxCallback) {
+    public void publish(ProductOutboxMessage outboxMessage) {
         var responseEventPayload =
                 kafkaMessageHelper.getOrderEventPayload(outboxMessage.getPayload(),
                         ProductReservationResponseEventPayload.class);
@@ -58,7 +60,10 @@ public class ProductReservationEventKafkaPublisher implements ProductReservation
                             productServiceConfigData.getProductReservationResponseTopicName(),
                             productReservationResponseAvroModel,
                             outboxMessage,
-                            outboxCallback,
+                            (message, status) -> {
+                                log.info("Kafka callback invoked for message id: {} with status: {}", message.getId(), status);
+                                productOutboxHelper.updateOutboxMessageStatus(message.getId(), status);
+                            },
                             responseEventPayload.getOrderId(),
                             "ProductReservationResponseAvroModel"));
 
@@ -68,6 +73,7 @@ public class ProductReservationEventKafkaPublisher implements ProductReservation
             log.error("Error while sending ProductReservationResponseEventPayload" +
                             " to kafka with order id: {} and saga id: {}, error: {}",
                     responseEventPayload.getOrderId(), sagaId, e.getMessage());
+            productOutboxHelper.updateOutboxMessageStatus(outboxMessage.getId(), OutboxStatus.FAILED);
         }
     }
 
