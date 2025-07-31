@@ -5,9 +5,10 @@ import com.commerce.platform.product.service.domain.valueobject.ProductReservati
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.ZonedDateTime;
-import java.util.UUID;
+
 import com.commerce.platform.domain.valueobject.ProductId;
 import com.commerce.platform.domain.valueobject.OrderId;
+import com.commerce.platform.domain.util.UuidGenerator;
 
 @Slf4j
 public class ProductReservationDomainServiceImpl implements ProductReservationDomainService {
@@ -16,7 +17,7 @@ public class ProductReservationDomainServiceImpl implements ProductReservationDo
     public ProductReservation createProductReservation(ProductId productId, OrderId orderId,
                                                       Integer quantity, ZonedDateTime requestTime) {
         ProductReservation reservation = ProductReservation.builder()
-                .productReservationId(new ProductReservationId(UUID.randomUUID()))
+                .productReservationId(new ProductReservationId(UuidGenerator.generate()))
                 .productId(productId)
                 .orderId(orderId)
                 .quantity(quantity)

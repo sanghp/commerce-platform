@@ -5,14 +5,15 @@ import com.commerce.platform.order.service.domain.dto.create.CreateOrderResponse
 import com.commerce.platform.order.service.domain.entity.Product;
 import com.commerce.platform.order.service.domain.event.OrderCreatedEvent;
 import com.commerce.platform.order.service.domain.mapper.OrderDataMapper;
-import com.commerce.platform.order.service.domain.outbox.scheduler.product.ProductReservationOutboxHelper;
+import com.commerce.platform.order.service.domain.outbox.scheduler.OrderOutboxHelper;
+import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.outbox.OutboxStatus;
+import com.commerce.platform.domain.util.UuidGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -20,17 +21,14 @@ public class OrderCreateCommandHandler {
 
     private final OrderCreateHelper orderCreateHelper;
     private final OrderDataMapper orderDataMapper;
-    private final ProductReservationOutboxHelper reservationOutboxHelper;
-    private final OrderSagaHelper orderSagaHelper;
+    private final OrderOutboxHelper orderOutboxHelper;
 
     public OrderCreateCommandHandler(OrderCreateHelper orderCreateHelper,
                                      OrderDataMapper orderDataMapper,
-                                     ProductReservationOutboxHelper reservationOutboxHelper,
-                                     OrderSagaHelper orderSagaHelper) {
+                                     OrderOutboxHelper orderOutboxHelper) {
         this.orderCreateHelper = orderCreateHelper;
         this.orderDataMapper = orderDataMapper;
-        this.reservationOutboxHelper = reservationOutboxHelper;
-        this.orderSagaHelper = orderSagaHelper;
+        this.orderOutboxHelper = orderOutboxHelper;
     }
 
     @Transactional
@@ -40,12 +38,11 @@ public class OrderCreateCommandHandler {
         CreateOrderResponse createOrderResponse = orderDataMapper.orderToCreateOrderResponse(orderCreatedEvent.getOrder(),
                 "Order created successfully");
 
-        reservationOutboxHelper.saveProductReservationOutboxMessage(orderDataMapper
-                .orderCreatedEventToProductReservationEventPayload(orderCreatedEvent),
-                orderCreatedEvent.getOrder().getOrderStatus(),
-                orderSagaHelper.orderStatusToSagaStatus(orderCreatedEvent.getOrder().getOrderStatus()),
+        orderOutboxHelper.saveOrderOutboxMessage(
+                ServiceMessageType.PRODUCT_RESERVATION_REQUEST,
+                orderDataMapper.orderCreatedEventToProductReservationEventPayload(orderCreatedEvent),
                 OutboxStatus.STARTED,
-                UUID.randomUUID());
+                UuidGenerator.generate());
 
         log.info("Returning CreateOrderResponse with order id: {}", orderCreatedEvent.getOrder().getId());
 

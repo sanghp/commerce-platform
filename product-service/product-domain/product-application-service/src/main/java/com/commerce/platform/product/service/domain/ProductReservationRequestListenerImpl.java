@@ -10,14 +10,14 @@ import com.commerce.platform.product.service.domain.ports.output.repository.Prod
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
+import com.commerce.platform.domain.util.UuidGenerator;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.UUID;
+import java.util.List;
 
 @Slf4j
 @Validated
@@ -35,29 +35,31 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
 
     @Override
     @Transactional
-    public void reserveOrder(ProductReservationRequest productReservationRequest) {
-        saveInboxMessage(productReservationRequest);
-        log.info("ProductReservationRequest saved in inbox table for saga id: {}",
-                productReservationRequest.getSagaId());
+    public void reserveOrders(List<ProductReservationRequest> productReservationRequests) {
+        if (productReservationRequests.isEmpty()) {
+            return;
+        }
+        
+        ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+        List<ProductInboxMessage> inboxMessages = productReservationRequests.stream()
+                .map(request -> createInboxMessage(request, now))
+                .toList();
+        
+        productInboxRepository.saveAll(inboxMessages);
+        
+        log.info("Saved {} ProductReservationRequest messages to inbox", inboxMessages.size());
     }
     
-    private void saveInboxMessage(ProductReservationRequest productReservationRequest) {
-        try {
-            ProductInboxMessage productInboxMessage = ProductInboxMessage.builder()
-                    .id(UUID.randomUUID())
-                    .sagaId(productReservationRequest.getSagaId())
-                    .eventType(ServiceMessageType.PRODUCT_RESERVATION_REQUEST)
-                    .payload(createPayload(productReservationRequest))
-                    .status(InboxStatus.RECEIVED)
-                    .receivedAt(ZonedDateTime.now(ZoneOffset.UTC))
-                    .retryCount(0)
-                    .version(0)
-                    .build();
-
-            productInboxRepository.save(productInboxMessage);
-        } catch (DataIntegrityViolationException e) {
-            log.debug("Duplicate inbox message for saga id: {}, skipping", productReservationRequest.getSagaId());
-        }
+    private ProductInboxMessage createInboxMessage(ProductReservationRequest productReservationRequest, ZonedDateTime receivedAt) {
+        return ProductInboxMessage.builder()
+                .id(UuidGenerator.generate())
+                .sagaId(productReservationRequest.getSagaId())
+                .type(ServiceMessageType.PRODUCT_RESERVATION_REQUEST)
+                .payload(createPayload(productReservationRequest))
+                .status(InboxStatus.RECEIVED)
+                .receivedAt(receivedAt)
+                .retryCount(0)
+                .build();
     }
 
     private String createPayload(ProductReservationRequest productReservationRequest) {

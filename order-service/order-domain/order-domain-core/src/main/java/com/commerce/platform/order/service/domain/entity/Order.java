@@ -8,9 +8,9 @@ import com.commerce.platform.order.service.domain.valueobject.StreetAddress;
 import com.commerce.platform.order.service.domain.valueobject.TrackingId;
 import lombok.Builder;
 import lombok.Getter;
+import com.commerce.platform.domain.util.UuidGenerator;
 
 import java.util.List;
-import java.util.UUID;
 
 @Getter
 public class Order extends AggregateRoot<OrderId>
@@ -46,8 +46,8 @@ public class Order extends AggregateRoot<OrderId>
     }
 
     public void initializeOrder() {
-        setId(new OrderId(UUID.randomUUID()));
-        trackingId = new TrackingId(UUID.randomUUID());
+        setId(new OrderId(UuidGenerator.generate()));
+        trackingId = new TrackingId(UuidGenerator.generate());
         orderStatus = OrderStatus.PENDING;
         initializeOrderItems();
     }

@@ -19,9 +19,9 @@ import com.commerce.platform.order.service.domain.outbox.model.product.ProductRe
 import com.commerce.platform.order.service.domain.outbox.model.product.ProductReservationOrderStatus;
 import com.commerce.platform.order.service.domain.valueobject.StreetAddress;
 import org.springframework.stereotype.Component;
+import com.commerce.platform.domain.util.UuidGenerator;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -119,7 +119,7 @@ public class OrderDataMapper {
 
     private StreetAddress orderAddressToStreetAddress(OrderAddress orderAddress) {
         return new StreetAddress(
-                UUID.randomUUID(),
+                UuidGenerator.generate(),
                 orderAddress.getStreet(),
                 orderAddress.getPostalCode(),
                 orderAddress.getCity()

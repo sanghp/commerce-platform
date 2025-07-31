@@ -2,12 +2,13 @@ package com.commerce.platform.product.service.domain.inbox.scheduler;
 
 import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.domain.valueobject.OrderId;
-import com.commerce.platform.domain.valueobject.ProductId;
 import com.commerce.platform.domain.valueobject.ProductReservationStatus;
 import com.commerce.platform.outbox.OutboxStatus;
 import com.commerce.platform.product.service.domain.ProductDomainService;
 import com.commerce.platform.product.service.domain.ProductReservationDomainService;
+import com.commerce.platform.product.service.domain.dto.message.ProductDTO;
 import com.commerce.platform.product.service.domain.dto.message.ProductReservationRequest;
+import com.commerce.platform.product.service.domain.mapper.ProductDataMapper;
 import com.commerce.platform.product.service.domain.entity.Product;
 import com.commerce.platform.product.service.domain.entity.ProductReservation;
 import com.commerce.platform.product.service.domain.exception.ProductDomainException;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.commerce.platform.domain.util.UuidGenerator;
 
 @Slf4j
 @Service
@@ -41,6 +43,7 @@ public class InboxMessageHelper {
     private final ProductReservationDomainService productReservationDomainService;
     private final ProductOutboxHelper productOutboxHelper;
     private final ObjectMapper objectMapper;
+    private final ProductDataMapper productDataMapper;
     
     public InboxMessageHelper(ProductInboxRepository productInboxRepository,
                               ProductRepository productRepository,
@@ -48,7 +51,8 @@ public class InboxMessageHelper {
                               ProductDomainService productDomainService,
                               ProductReservationDomainService productReservationDomainService,
                               ProductOutboxHelper productOutboxHelper,
-                              ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper,
+                              ProductDataMapper productDataMapper) {
         this.productInboxRepository = productInboxRepository;
         this.productRepository = productRepository;
         this.productReservationRepository = productReservationRepository;
@@ -56,14 +60,7 @@ public class InboxMessageHelper {
         this.productReservationDomainService = productReservationDomainService;
         this.productOutboxHelper = productOutboxHelper;
         this.objectMapper = objectMapper;
-    }
-    
-    public void processInboxMessages(int batchSize) {
-        for (int i = 0; i < batchSize; i++) {
-            if (!processNextMessage()) {
-                break;
-            }
-        }
+        this.productDataMapper = productDataMapper;
     }
     
     @Transactional
@@ -80,7 +77,7 @@ public class InboxMessageHelper {
         ZonedDateTime processedAt = ZonedDateTime.now();
         
         try {
-            if (inboxMessage.getEventType() == ServiceMessageType.PRODUCT_RESERVATION_REQUEST) {
+            if (inboxMessage.getType() == ServiceMessageType.PRODUCT_RESERVATION_REQUEST) {
                 processProductReservationRequest(inboxMessage);
             }
             
@@ -124,8 +121,9 @@ public class InboxMessageHelper {
         );
         
         UUID sagaId = request.getSagaId();
-        ServiceMessageType outboxEventType = ServiceMessageType.PRODUCT_RESERVATION_RESPONSE;
-        List<Product> products = request.getProducts();
+        ServiceMessageType outboxType = ServiceMessageType.PRODUCT_RESERVATION_RESPONSE;
+        List<ProductDTO> productDTOs = request.getProducts();
+        List<Product> products = productDataMapper.productDTOsToProducts(productDTOs);
         ZonedDateTime requestTime = ZonedDateTime.now();
         UUID orderId = request.getOrderId();
         
@@ -139,7 +137,7 @@ public class InboxMessageHelper {
             responsePayload = createFailurePayload(orderId, sagaId, products, requestTime, e.getMessage());
         }
         
-        saveOutboxMessage(sagaId, outboxEventType, responsePayload);
+        saveOutboxMessage(sagaId, outboxType, responsePayload);
     }
     
     private ProductReservationResponseEventPayload processProductReservation(
@@ -207,9 +205,9 @@ public class InboxMessageHelper {
         return createSuccessPayload(orderId, sagaId, products, requestTime);
     }
     
-    private void saveOutboxMessage(UUID sagaId, ServiceMessageType eventType, ProductReservationResponseEventPayload responsePayload) {
+    private void saveOutboxMessage(UUID sagaId, ServiceMessageType type, ProductReservationResponseEventPayload responsePayload) {
         try {
-            ProductOutboxMessage outboxMessage = createOutboxMessage(sagaId, eventType, responsePayload);
+            ProductOutboxMessage outboxMessage = createOutboxMessage(sagaId, type, responsePayload);
             productOutboxHelper.save(outboxMessage);
         } catch (DataIntegrityViolationException e) {
             log.debug("Outbox message already exists for saga id: {}", sagaId);
@@ -252,13 +250,13 @@ public class InboxMessageHelper {
                 .build();
     }
 
-    private ProductOutboxMessage createOutboxMessage(UUID sagaId, ServiceMessageType eventType, 
+    private ProductOutboxMessage createOutboxMessage(UUID sagaId, ServiceMessageType type, 
                                                     ProductReservationResponseEventPayload payload) {
         return ProductOutboxMessage.builder()
-                .id(UUID.randomUUID())
+                .id(UuidGenerator.generate())
                 .sagaId(sagaId)
                 .createdAt(ZonedDateTime.now())
-                .type(eventType)
+                .type(type)
                 .payload(productOutboxHelper.createPayload(payload))
                 .outboxStatus(OutboxStatus.STARTED)
                 .build();
