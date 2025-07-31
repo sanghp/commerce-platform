@@ -74,22 +74,16 @@ public class OrderOutboxScheduler implements OutboxScheduler {
         ServiceMessageType messageType = ServiceMessageType.valueOf(outboxMessage.getType());
         switch (messageType) {
             case PAYMENT_REQUEST:
-                paymentRequestMessagePublisher.publish(outboxMessage, this::updateOutboxStatus);
+                paymentRequestMessagePublisher.publish(outboxMessage);
                 break;
             case PRODUCT_RESERVATION_REQUEST:
-                productReservationRequestMessagePublisher.publish(outboxMessage, this::updateOutboxStatus);
+                productReservationRequestMessagePublisher.publish(outboxMessage);
                 break;
             default:
                 log.warn("Unknown outbox message type: {}", outboxMessage.getType());
         }
     }
 
-    @Transactional
-    public void updateOutboxStatus(OrderOutboxMessage orderOutboxMessage, OutboxStatus outboxStatus) {
-        orderOutboxMessage.setOutboxStatus(outboxStatus);
-        orderOutboxHelper.save(orderOutboxMessage);
-        log.info("OrderOutboxMessage is updated with outbox status: {}", outboxStatus.name());
-    }
     
     @Transactional
     public void resetTimedOutMessages() {

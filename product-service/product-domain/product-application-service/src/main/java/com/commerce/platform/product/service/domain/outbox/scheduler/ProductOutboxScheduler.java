@@ -35,7 +35,6 @@ public class ProductOutboxScheduler implements OutboxScheduler {
     @Scheduled(fixedDelayString = "${product-service.outbox-scheduler-fixed-rate}",
             initialDelayString = "${product-service.outbox-scheduler-initial-delay}")
     public void processOutboxMessage() {
-        // 트랜잭션 내에서 STARTED -> PROCESSING 상태로 업데이트
         List<ProductOutboxMessage> messagesToProcess = updateMessagesToProcessing();
         
         if (!messagesToProcess.isEmpty()) {
@@ -45,7 +44,6 @@ public class ProductOutboxScheduler implements OutboxScheduler {
                             .map(msg -> msg.getId().toString())
                             .collect(Collectors.joining(",")));
             
-            // 트랜잭션 밖에서 메시지 발행
             messagesToProcess.forEach(this::publishMessage);
             
             log.info("{} ProductOutboxMessages processed", messagesToProcess.size());
@@ -65,16 +63,7 @@ public class ProductOutboxScheduler implements OutboxScheduler {
     }
     
     private void publishMessage(ProductOutboxMessage outboxMessage) {
-        responseMessagePublisher.publish(outboxMessage, this::updateOutboxStatus);
+        responseMessagePublisher.publish(outboxMessage);
     }
 
-    @Transactional
-    public void updateOutboxStatus(ProductOutboxMessage outboxMessage, OutboxStatus outboxStatus) {
-        outboxMessage.setOutboxStatus(outboxStatus);
-        if (outboxStatus == OutboxStatus.COMPLETED || outboxStatus == OutboxStatus.FAILED) {
-            outboxMessage.setProcessedAt(ZonedDateTime.now());
-        }
-        outboxHelper.save(outboxMessage);
-        log.info("ProductOutboxMessage is updated with outbox status: {}", outboxStatus.name());
-    }
 } 
