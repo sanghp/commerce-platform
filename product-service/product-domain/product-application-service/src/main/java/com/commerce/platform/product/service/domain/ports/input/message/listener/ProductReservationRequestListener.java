@@ -5,5 +5,5 @@ import com.commerce.platform.product.service.domain.dto.message.ProductReservati
 import java.util.List;
 
 public interface ProductReservationRequestListener {
-    void reserveOrders(List<ProductReservationRequest> productReservationRequests);
+    void saveToInbox(List<ProductReservationRequest> productReservationRequests);
 }

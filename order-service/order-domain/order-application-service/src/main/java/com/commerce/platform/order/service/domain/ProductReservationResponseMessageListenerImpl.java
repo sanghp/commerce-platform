@@ -35,7 +35,7 @@ public class ProductReservationResponseMessageListenerImpl implements ProductRes
 
     @Override
     @Transactional
-    public void handleProductReservationResponses(List<ProductReservationResponse> productReservationResponses) {
+    public void saveToInbox(List<ProductReservationResponse> productReservationResponses) {
         if (productReservationResponses.isEmpty()) {
             return;
         }

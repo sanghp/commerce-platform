@@ -35,7 +35,7 @@ class ProductReservationRequestListenerImpl implements ProductReservationRequest
 
     @Override
     @Transactional
-    public void reserveOrders(List<ProductReservationRequest> productReservationRequests) {
+    public void saveToInbox(List<ProductReservationRequest> productReservationRequests) {
         if (productReservationRequests.isEmpty()) {
             return;
         }

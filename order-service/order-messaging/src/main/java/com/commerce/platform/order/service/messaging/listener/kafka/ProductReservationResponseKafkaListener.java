@@ -46,7 +46,7 @@ public class ProductReservationResponseKafkaListener implements KafkaConsumer<Pr
                     .map(orderMessagingDataMapper::productReservationResponseAvroModelToProductReservationResponse)
                     .toList();
                     
-            reservationResponseMessageListener.handleProductReservationResponses(responses);
+            reservationResponseMessageListener.saveToInbox(responses);
             
         } catch (Exception e) {
             log.error("Failed to process product reservation responses", e);
