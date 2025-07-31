@@ -78,4 +78,10 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
                 .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
                 .collect(Collectors.toList());
     }
+    
+    @Override
+    public Optional<ProductOutboxMessage> findById(UUID id) {
+        return outboxJpaRepository.findById(id)
+                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage);
+    }
 } 

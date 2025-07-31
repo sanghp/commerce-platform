@@ -77,4 +77,10 @@ public class OrderOutboxRepositoryImpl implements OrderOutboxRepository {
         }
         return deletedCount;
     }
+    
+    @Override
+    public Optional<OrderOutboxMessage> findById(UUID id) {
+        return orderOutboxJpaRepository.findById(id)
+                .map(orderOutboxDataAccessMapper::orderOutboxEntityToOrderOutboxMessage);
+    }
 }

@@ -25,4 +25,6 @@ public interface OrderOutboxRepository {
                                                                      OutboxStatus outboxStatus);
 
     int deleteByOutboxStatus(OutboxStatus outboxStatus, int limit);
+    
+    Optional<OrderOutboxMessage> findById(UUID id);
 }

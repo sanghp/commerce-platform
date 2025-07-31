@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -88,5 +89,19 @@ public class ProductOutboxHelper {
             throw new ProductDomainException("Could not create ProductReservationResponseEventPayload object for order id: " +
                     payload.getOrderId(), e);
         }
+    }
+    
+    @Transactional
+    public void updateOutboxMessageStatus(UUID messageId, OutboxStatus status) {
+        ProductOutboxMessage message = outboxRepository.findById(messageId)
+                .orElseThrow(() -> new ProductDomainException("ProductOutboxMessage not found with id: " + messageId));
+        
+        message.setOutboxStatus(status);
+        if (status == OutboxStatus.COMPLETED || status == OutboxStatus.FAILED) {
+            message.setProcessedAt(ZonedDateTime.now());
+        }
+        
+        save(message);
+        log.info("ProductOutboxMessage {} updated with status: {}", messageId, status);
     }
 }

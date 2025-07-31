@@ -79,6 +79,20 @@ public class OrderOutboxHelper {
     public int deleteOrderOutboxMessageByOutboxStatus(OutboxStatus outboxStatus, int limit) {
         return orderOutboxRepository.deleteByOutboxStatus(outboxStatus, limit);
     }
+    
+    @Transactional
+    public void updateOutboxMessageStatus(UUID messageId, OutboxStatus status) {
+        OrderOutboxMessage message = orderOutboxRepository.findById(messageId)
+                .orElseThrow(() -> new OrderDomainException("OrderOutboxMessage not found with id: " + messageId));
+        
+        message.setOutboxStatus(status);
+        if (status == OutboxStatus.COMPLETED || status == OutboxStatus.FAILED) {
+            message.setProcessedAt(ZonedDateTime.now());
+        }
+        
+        save(message);
+        log.info("OrderOutboxMessage {} updated with status: {}", messageId, status);
+    }
 
     private String createPayload(Object eventPayload) {
         try {

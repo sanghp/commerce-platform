@@ -21,4 +21,6 @@ public interface ProductOutboxRepository {
     void deleteByOutboxStatus(OutboxStatus outboxStatus);
 
     List<ProductOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit);
+    
+    Optional<ProductOutboxMessage> findById(UUID id);
 } 
