@@ -1,7 +1,5 @@
 package com.commerce.platform.domain.exception;
 
-import com.commerce.platform.domain.event.DomainEvent;
-
 public class DomainException extends RuntimeException {
 
     public DomainException(String message) {
