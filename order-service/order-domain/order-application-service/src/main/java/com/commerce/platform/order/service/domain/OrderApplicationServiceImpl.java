@@ -1,17 +1,13 @@
 package com.commerce.platform.order.service.domain;
 
-import com.commerce.platform.domain.valueobject.Money;
-import com.commerce.platform.domain.valueobject.ProductId;
 import com.commerce.platform.order.service.domain.dto.client.SearchProductsRequest;
 import com.commerce.platform.order.service.domain.dto.client.SearchProductsResponse;
-import com.commerce.platform.order.service.domain.dto.client.ProductResponse;
 import com.commerce.platform.order.service.domain.dto.create.CreateOrderCommand;
 import com.commerce.platform.order.service.domain.dto.create.CreateOrderResponse;
 import com.commerce.platform.order.service.domain.dto.create.OrderItem;
 import com.commerce.platform.order.service.domain.dto.track.TrackOrderQuery;
 import com.commerce.platform.order.service.domain.dto.track.TrackOrderResponse;
 import com.commerce.platform.order.service.domain.entity.Product;
-import com.commerce.platform.order.service.domain.exception.OrderNotFoundException;
 import com.commerce.platform.order.service.domain.exception.ProductNotFoundException;
 import com.commerce.platform.order.service.domain.mapper.OrderDataMapper;
 import com.commerce.platform.order.service.domain.ports.input.service.OrderApplicationService;

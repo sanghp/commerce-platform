@@ -1,13 +1,12 @@
 package com.commerce.platform.order.service.domain;
 
 import com.commerce.platform.order.service.domain.dto.message.ProductReservationResponse;
-import com.commerce.platform.domain.valueobject.OrderStatus;
 import com.commerce.platform.domain.valueobject.ProductReservationStatus;
 import com.commerce.platform.order.service.domain.entity.Order;
 import com.commerce.platform.order.service.domain.event.OrderReservedEvent;
-import com.commerce.platform.order.service.domain.exception.OrderDomainException;
 import com.commerce.platform.order.service.domain.mapper.OrderDataMapper;
-import com.commerce.platform.order.service.domain.outbox.scheduler.payment.PaymentOutboxHelper;
+import com.commerce.platform.order.service.domain.outbox.scheduler.OrderOutboxHelper;
+import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.outbox.OutboxStatus;
 import com.commerce.platform.saga.SagaStatus;
 import com.commerce.platform.saga.SagaStep;
@@ -22,16 +21,16 @@ public class ProductReservationSaga implements SagaStep<ProductReservationRespon
 
     private final OrderDomainService orderDomainService;
     private final OrderSagaHelper orderSagaHelper;
-    private final PaymentOutboxHelper paymentOutboxHelper;
+    private final OrderOutboxHelper orderOutboxHelper;
     private final OrderDataMapper orderDataMapper;
 
     public ProductReservationSaga(OrderDomainService orderDomainService,
                                   OrderSagaHelper orderSagaHelper,
-                                  PaymentOutboxHelper paymentOutboxHelper,
+                                  OrderOutboxHelper orderOutboxHelper,
                                   OrderDataMapper orderDataMapper) {
         this.orderDomainService = orderDomainService;
         this.orderSagaHelper = orderSagaHelper;
-        this.paymentOutboxHelper = paymentOutboxHelper;
+        this.orderOutboxHelper = orderOutboxHelper;
         this.orderDataMapper = orderDataMapper;
     }
 
@@ -44,10 +43,9 @@ public class ProductReservationSaga implements SagaStep<ProductReservationRespon
 
             SagaStatus sagaStatus = orderSagaHelper.orderStatusToSagaStatus(order.getOrderStatus());
             
-            paymentOutboxHelper.savePaymentOutboxMessage(orderDataMapper
-                            .orderReservedEventToPaymentEventPayload(domainEvent),
-                    order.getOrderStatus(),
-                    sagaStatus,
+            orderOutboxHelper.saveOrderOutboxMessage(
+                    ServiceMessageType.PAYMENT_REQUEST,
+                    orderDataMapper.orderReservedEventToPaymentEventPayload(domainEvent),
                     OutboxStatus.STARTED,
                     reservationResponse.getSagaId());
 
