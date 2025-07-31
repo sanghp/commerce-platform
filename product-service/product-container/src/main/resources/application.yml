@@ -14,8 +14,16 @@ logging:
 product-service:
   product-reservation-request-topic-name: product-reservation-request
   product-reservation-response-topic-name: product-reservation-response
-  outbox-scheduler-fixed-rate: 5000
-  outbox-scheduler-initial-delay: 10000
+  outbox-scheduler-fixed-rate: 100
+  outbox-scheduler-initial-delay: 1000
+  outbox-scheduler-batch-size: 10
+  outbox-processing-timeout-minutes: 5
+  outbox-cleaner-cron: "@midnight"
+  outbox-cleaner-batch-size: 100
+  inbox-scheduler-fixed-rate: 100
+  inbox-retry-scheduler-fixed-rate: 3000
+  inbox-max-retry-count: 3
+  inbox-batch-size: 100
 
 spring:
   main:

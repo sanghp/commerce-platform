@@ -7,6 +7,7 @@ import com.commerce.platform.product.service.dataaccess.outbox.repository.Produc
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductOutboxRepository;
 import com.commerce.platform.outbox.OutboxStatus;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -32,6 +33,17 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
                 .productOutboxEntityToOutboxMessage(outboxJpaRepository
                         .save(outboxDataAccessMapper
                                 .productOutboxMessageToOutboxEntity(outboxMessage)));
+    }
+    
+    @Override
+    public List<ProductOutboxMessage> saveAll(List<ProductOutboxMessage> outboxMessages) {
+        return outboxJpaRepository
+                .saveAll(outboxMessages.stream()
+                        .map(outboxDataAccessMapper::productOutboxMessageToOutboxEntity)
+                        .collect(Collectors.toList()))
+                .stream()
+                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -60,10 +72,10 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
     }
 
     @Override
-    public Optional<List<ProductOutboxMessage>> findByOutboxStatus(OutboxStatus outboxStatus) {
-        return outboxJpaRepository.findByOutboxStatus(outboxStatus)
-                .map(outboxEntities -> outboxEntities.stream()
-                        .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
-                        .collect(Collectors.toList()));
+    public List<ProductOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit) {
+        return outboxJpaRepository.findByOutboxStatus(outboxStatus, PageRequest.of(0, limit))
+                .stream()
+                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
+                .collect(Collectors.toList());
     }
 } 

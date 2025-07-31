@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,9 +31,8 @@ public class ProductOutboxHelper {
     }
 
     @Transactional(readOnly = true)
-    public Optional<List<ProductOutboxMessage>>
-    getProductOutboxMessageByOutboxStatus(OutboxStatus outboxStatus) {
-        return outboxRepository.findByOutboxStatus(outboxStatus);
+    public List<ProductOutboxMessage> getProductOutboxMessageByOutboxStatus(OutboxStatus outboxStatus, int limit) {
+        return outboxRepository.findByOutboxStatus(outboxStatus, limit);
     }
 
     @Transactional
@@ -57,6 +55,13 @@ public class ProductOutboxHelper {
         message.setPayload(createPayload(payload));
         save(message);
         log.info("ProductOutboxMessage updated for saga id: {}", sagaId);
+    }
+    
+    @Transactional
+    public void updateOutboxMessagesStatus(List<ProductOutboxMessage> messages, OutboxStatus newStatus) {
+        messages.forEach(message -> message.setOutboxStatus(newStatus));
+        outboxRepository.saveAll(messages);
+        log.info("Updated {} ProductOutboxMessages to status: {}", messages.size(), newStatus);
     }
 
     @Transactional(readOnly = true)

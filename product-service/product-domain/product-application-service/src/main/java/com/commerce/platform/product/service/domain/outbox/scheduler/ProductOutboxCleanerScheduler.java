@@ -5,34 +5,35 @@ import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMe
 import com.commerce.platform.outbox.OutboxScheduler;
 import com.commerce.platform.outbox.OutboxStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 public class ProductOutboxCleanerScheduler implements OutboxScheduler {
 
     private final ProductOutboxHelper outboxHelper;
+    
+    @Value("${product-service.outbox-cleaner-batch-size:100}")
+    private int batchSize;
 
     public ProductOutboxCleanerScheduler(ProductOutboxHelper outboxHelper) {
         this.outboxHelper = outboxHelper;
     }
 
     @Override
-    @Scheduled(cron = "@midnight")
+    @Scheduled(cron = "${product-service.outbox-cleaner-cron:@midnight}")
     public void processOutboxMessage() {
-        Optional<List<ProductOutboxMessage>> outboxMessagesResponse =
-                outboxHelper.getProductOutboxMessageByOutboxStatus(OutboxStatus.COMPLETED);
-        if (outboxMessagesResponse.isPresent()) {
-            List<ProductOutboxMessage> outboxMessages = outboxMessagesResponse.get();
+        List<ProductOutboxMessage> outboxMessages = 
+                outboxHelper.getProductOutboxMessageByOutboxStatus(OutboxStatus.COMPLETED, batchSize);
+        if (!outboxMessages.isEmpty()) {
             log.info("Received {} ProductOutboxMessage for clean-up.", outboxMessages.size());
             outboxHelper.deleteProductOutboxMessageByOutboxStatus(OutboxStatus.COMPLETED);
             log.info("{} ProductOutboxMessage deleted!", outboxMessages.size());
         }
-
     }
 } 

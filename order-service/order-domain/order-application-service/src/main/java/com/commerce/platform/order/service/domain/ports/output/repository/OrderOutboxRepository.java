@@ -1,0 +1,28 @@
+package com.commerce.platform.order.service.domain.ports.output.repository;
+
+import com.commerce.platform.order.service.domain.outbox.model.OrderOutboxMessage;
+import com.commerce.platform.outbox.OutboxStatus;
+
+import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface OrderOutboxRepository {
+
+    OrderOutboxMessage save(OrderOutboxMessage orderOutboxMessage);
+    
+    List<OrderOutboxMessage> saveAll(List<OrderOutboxMessage> orderOutboxMessages);
+
+    List<OrderOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit);
+    
+    List<OrderOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, 
+                                                                  ZonedDateTime fetchedAtBefore, 
+                                                                  int limit);
+
+    Optional<OrderOutboxMessage> findByTypeAndSagaIdAndOutboxStatus(String type,
+                                                                     UUID sagaId,
+                                                                     OutboxStatus outboxStatus);
+
+    int deleteByOutboxStatus(OutboxStatus outboxStatus, int limit);
+}

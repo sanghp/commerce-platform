@@ -11,6 +11,8 @@ import java.util.UUID;
 
 public interface ProductOutboxRepository {
     ProductOutboxMessage save(ProductOutboxMessage outboxMessage);
+    
+    List<ProductOutboxMessage> saveAll(List<ProductOutboxMessage> outboxMessages);
 
     Optional<List<ProductOutboxMessage>> findByTypeAndOutboxStatus(ServiceMessageType type,
                                                                   OutboxStatus outboxStatus);
@@ -18,5 +20,5 @@ public interface ProductOutboxRepository {
     Optional<ProductOutboxMessage> findBySagaId(UUID sagaId);
     void deleteByOutboxStatus(OutboxStatus outboxStatus);
 
-    Optional<List<ProductOutboxMessage>> findByOutboxStatus(OutboxStatus outboxStatus);
+    List<ProductOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit);
 } 
