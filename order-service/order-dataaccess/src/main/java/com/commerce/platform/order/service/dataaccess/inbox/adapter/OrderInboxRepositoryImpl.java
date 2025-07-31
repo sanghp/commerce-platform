@@ -47,8 +47,8 @@ public class OrderInboxRepositoryImpl implements OrderInboxRepository {
     }
 
     @Override
-    public Optional<OrderInboxMessage> findBySagaIdAndEventType(UUID sagaId, ServiceMessageType eventType) {
-        return orderInboxJpaRepository.findBySagaIdAndEventType(sagaId, eventType)
+    public Optional<OrderInboxMessage> findBySagaIdAndType(UUID sagaId, ServiceMessageType type) {
+        return orderInboxJpaRepository.findBySagaIdAndType(sagaId, type)
                 .map(orderInboxDataAccessMapper::orderInboxEntityToOrderInboxMessage);
     }
     

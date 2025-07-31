@@ -47,8 +47,8 @@ public class ProductInboxRepositoryImpl implements ProductInboxRepository {
     }
 
     @Override
-    public Optional<ProductInboxMessage> findBySagaIdAndEventType(UUID sagaId, ServiceMessageType eventType) {
-        return productInboxJpaRepository.findBySagaIdAndEventType(sagaId, eventType)
+    public Optional<ProductInboxMessage> findBySagaIdAndType(UUID sagaId, ServiceMessageType type) {
+        return productInboxJpaRepository.findBySagaIdAndType(sagaId, type)
                 .map(productInboxDataAccessMapper::productInboxEntityToProductInboxMessage);
     }
     

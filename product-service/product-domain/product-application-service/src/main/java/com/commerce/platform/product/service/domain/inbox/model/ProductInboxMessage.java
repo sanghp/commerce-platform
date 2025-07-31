@@ -14,7 +14,7 @@ import java.util.UUID;
 public class ProductInboxMessage {
     private UUID id;
     private UUID sagaId;
-    private ServiceMessageType eventType;
+    private ServiceMessageType type;
     private String payload;
     private InboxStatus status;
     private ZonedDateTime receivedAt;

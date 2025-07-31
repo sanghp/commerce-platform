@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @Repository
 public interface OrderInboxJpaRepository extends JpaRepository<OrderInboxEntity, UUID> {
-    Optional<OrderInboxEntity> findBySagaIdAndEventType(UUID sagaId, ServiceMessageType eventType);
+    Optional<OrderInboxEntity> findBySagaIdAndType(UUID sagaId, ServiceMessageType type);
     
     @Query(value = "SELECT * FROM order_inbox WHERE status = :#{#status.name()} ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
            nativeQuery = true)

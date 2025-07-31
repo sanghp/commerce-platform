@@ -10,16 +10,10 @@ import com.commerce.platform.order.service.domain.ports.output.repository.OrderI
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static com.commerce.platform.order.service.domain.entity.Order.FAILURE_MESSAGE_DELIMITER;
 
@@ -60,7 +54,7 @@ public class InboxMessageHelper {
         ZonedDateTime processedAt = ZonedDateTime.now();
         
         try {
-            if (inboxMessage.getEventType() == ServiceMessageType.PRODUCT_RESERVATION_RESPONSE) {
+            if (inboxMessage.getType() == ServiceMessageType.PRODUCT_RESERVATION_RESPONSE) {
                 processProductReservationResponse(inboxMessage);
             }
             

@@ -22,7 +22,7 @@ public class OrderInboxEntity {
     private UUID id;
     private UUID sagaId;
     @Enumerated(EnumType.STRING)
-    private ServiceMessageType eventType;
+    private ServiceMessageType type;
     private String payload;
     @Enumerated(EnumType.STRING)
     private InboxStatus status;

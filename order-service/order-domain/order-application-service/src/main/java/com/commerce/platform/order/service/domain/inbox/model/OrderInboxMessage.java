@@ -16,7 +16,7 @@ import java.util.UUID;
 public class OrderInboxMessage {
     private final UUID id;
     private final UUID sagaId;
-    private final ServiceMessageType eventType;
+    private final ServiceMessageType type;
     private final String payload;
     private InboxStatus status;
     private final ZonedDateTime receivedAt;

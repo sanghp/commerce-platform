@@ -11,7 +11,7 @@ import java.util.UUID;
 public interface OrderInboxRepository {
     OrderInboxMessage save(OrderInboxMessage orderInboxMessage);
     List<OrderInboxMessage> saveAll(List<OrderInboxMessage> orderInboxMessages);
-    Optional<OrderInboxMessage> findBySagaIdAndEventType(UUID sagaId, ServiceMessageType eventType);
+    Optional<OrderInboxMessage> findBySagaIdAndType(UUID sagaId, ServiceMessageType type);
     List<OrderInboxMessage> findByStatusOrderByReceivedAtWithSkipLock(InboxStatus status, int limit); // FOR UPDATE SKIP LOCKED
     List<OrderInboxMessage> findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus status, int maxRetryCount, int limit); // FOR UPDATE SKIP LOCKED
 }

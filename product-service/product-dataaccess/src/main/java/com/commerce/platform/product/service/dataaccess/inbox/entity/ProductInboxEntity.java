@@ -24,7 +24,7 @@ public class ProductInboxEntity {
     private UUID sagaId;
     
     @Enumerated(EnumType.STRING)
-    private ServiceMessageType eventType;
+    private ServiceMessageType type;
     
     private String payload;
     

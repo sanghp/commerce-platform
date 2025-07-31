@@ -15,7 +15,7 @@ import java.util.UUID;
 @Repository
 public interface ProductInboxJpaRepository extends JpaRepository<ProductInboxEntity, UUID> {
     
-    Optional<ProductInboxEntity> findBySagaIdAndEventType(UUID sagaId, ServiceMessageType eventType);
+    Optional<ProductInboxEntity> findBySagaIdAndType(UUID sagaId, ServiceMessageType type);
     
     @Query(value = "SELECT * FROM product_inbox WHERE status = :#{#status.name()} ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
            nativeQuery = true)
