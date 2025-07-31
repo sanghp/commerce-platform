@@ -2,8 +2,8 @@ package com.commerce.platform.order.service.domain.ports.input.message.listener.
 
 import com.commerce.platform.order.service.domain.dto.message.ProductReservationResponse;
 
-public interface ProductReservationResponseMessageListener {
-    void handleProductReservationSucceededResponse(ProductReservationResponse productReservationResponse);
+import java.util.List;
 
-    void handleProductReservationFailedResponse(ProductReservationResponse productReservationResponse);
+public interface ProductReservationResponseMessageListener {
+    void handleProductReservationResponses(List<ProductReservationResponse> productReservationResponses);
 }

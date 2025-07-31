@@ -107,8 +107,8 @@ docker compose -f infrastructure/docker-compose/docker-compose.yml up -d
 
 애플리케이션 실행 후, 아래 링크를 통해 각 서비스의 API 문서를 확인하거나 Kafka UI에 접근할 수 있습니다.
 
-- **Order Service API**: [http://localhost:8081/swagger-ui.html](http://localhost:8081/swagger-ui.html)
-- **Product Service API**: [http://localhost:8082/swagger-ui.html](http://localhost:8082/swagger-ui.html)
+- **Order Service API**: [http://localhost:8181/swagger-ui.html](http://localhost:8081/swagger-ui.html)
+- **Product Service API**: [http://localhost:8182/swagger-ui.html](http://localhost:8082/swagger-ui.html)
 - **Kafka UI**: [http://localhost:28080](http://localhost:28080)
 
 ---

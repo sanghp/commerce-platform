@@ -1,12 +1,10 @@
 package com.commerce.platform.product.service.messaging.mapper;
 
-import com.commerce.platform.domain.valueobject.ProductId;
 import com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel;
 import com.commerce.platform.kafka.order.avro.model.ProductReservationResponseAvroModel;
 import com.commerce.platform.kafka.order.avro.model.ProductReservationStatus;
+import com.commerce.platform.product.service.domain.dto.message.ProductDTO;
 import com.commerce.platform.product.service.domain.dto.message.ProductReservationRequest;
-import com.commerce.platform.product.service.domain.entity.Product;
-import com.commerce.platform.product.service.domain.outbox.model.ProductReservationProduct;
 import com.commerce.platform.product.service.domain.outbox.model.ProductReservationResponseEventPayload;
 import com.commerce.platform.product.service.domain.valueobject.ProductReservationOrderStatus;
 import org.springframework.stereotype.Component;
@@ -25,8 +23,8 @@ public class ProductMessagingDataMapper {
                 .orderId(reservationRequestAvroModel.getOrderId())
                 .reservationOrderStatus(ProductReservationOrderStatus.valueOf(reservationRequestAvroModel.getReservationOrderStatus().name()))
                 .products(reservationRequestAvroModel.getProducts().stream().map(avroModel ->
-                        Product.builder()
-                                .productId(new ProductId(avroModel.getId()))
+                        ProductDTO.builder()
+                                .productId(avroModel.getId())
                                 .quantity(avroModel.getQuantity())
                                 .build()).collect(Collectors.toList())
                 )

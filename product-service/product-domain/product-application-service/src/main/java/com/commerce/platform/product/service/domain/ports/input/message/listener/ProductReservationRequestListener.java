@@ -2,6 +2,8 @@ package com.commerce.platform.product.service.domain.ports.input.message.listene
 
 import com.commerce.platform.product.service.domain.dto.message.ProductReservationRequest;
 
+import java.util.List;
+
 public interface ProductReservationRequestListener {
-    void reserveOrder(ProductReservationRequest productReservationRequest);
+    void reserveOrders(List<ProductReservationRequest> productReservationRequests);
 }

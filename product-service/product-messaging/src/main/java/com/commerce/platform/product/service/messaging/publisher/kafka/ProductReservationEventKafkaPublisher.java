@@ -1,8 +1,6 @@
 package com.commerce.platform.product.service.messaging.publisher.kafka;
 
-import com.commerce.platform.kafka.order.avro.model.PaymentRequestAvroModel;
 import com.commerce.platform.kafka.order.avro.model.ProductReservationResponseAvroModel;
-import com.commerce.platform.kafka.order.avro.model.ProductReservationStatus;
 import com.commerce.platform.kafka.producer.KafkaMessageHelper;
 import com.commerce.platform.outbox.OutboxStatus;
 import com.commerce.platform.product.service.domain.config.ProductServiceConfigData;

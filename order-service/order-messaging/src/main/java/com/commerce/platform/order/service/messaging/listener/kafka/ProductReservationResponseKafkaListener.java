@@ -1,13 +1,11 @@
 package com.commerce.platform.order.service.messaging.listener.kafka;
 
 import com.commerce.platform.kafka.order.avro.model.ProductReservationResponseAvroModel;
-import com.commerce.platform.kafka.order.avro.model.ProductReservationStatus;
 import com.commerce.platform.order.service.messaging.mapper.OrderMessagingDataMapper;
 import com.commerce.platform.kafka.consumer.KafkaConsumer;
-import com.commerce.platform.order.service.domain.exception.OrderNotFoundException;
+import com.commerce.platform.order.service.domain.dto.message.ProductReservationResponse;
 import com.commerce.platform.order.service.domain.ports.input.message.listener.product.ProductReservationResponseMessageListener;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -15,8 +13,6 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-
-import static com.commerce.platform.order.service.domain.entity.Order.FAILURE_MESSAGE_DELIMITER;
 
 @Slf4j
 @Component
@@ -45,34 +41,16 @@ public class ProductReservationResponseKafkaListener implements KafkaConsumer<Pr
                 partitions.toString(),
                 offsets.toString());
 
-        messages.forEach(productReservationResponseAvroModel -> {
-            try {
-                if (
-                    ProductReservationStatus.APPROVED == productReservationResponseAvroModel.getProductReservationStatus() ||
-                    ProductReservationStatus.BOOKED == productReservationResponseAvroModel.getProductReservationStatus()
-                ) {
-                    log.info("Processing approved order for order id: {}",
-                            productReservationResponseAvroModel.getOrderId());
-                    reservationResponseMessageListener.handleProductReservationSucceededResponse(orderMessagingDataMapper
-                            .productReservationResponseAvroModelToProductReservationResponse(productReservationResponseAvroModel));
-                } else if (
-                    ProductReservationStatus.REJECTED == productReservationResponseAvroModel.getProductReservationStatus() ||
-                    ProductReservationStatus.CANCELLED == productReservationResponseAvroModel.getProductReservationStatus()
-                ) {
-                    log.info("Processing rejected order for order id: {}, with failure messages: {}",
-                            productReservationResponseAvroModel.getOrderId(),
-                            String.join(FAILURE_MESSAGE_DELIMITER,
-                                    productReservationResponseAvroModel.getFailureMessages()));
-                    reservationResponseMessageListener.handleProductReservationFailedResponse(orderMessagingDataMapper
-                            .productReservationResponseAvroModelToProductReservationResponse(productReservationResponseAvroModel));
-                }
-            } catch (OptimisticLockingFailureException e) {
-                log.error("Caught optimistic locking exception in ProductReservationResponseKafkaListener for order id: {}",
-                        productReservationResponseAvroModel.getOrderId());
-            } catch (OrderNotFoundException e) {
-                log.error("No order found for order id: {}", productReservationResponseAvroModel.getOrderId());
-            }
-        });
+        try {
+            List<ProductReservationResponse> responses = messages.stream()
+                    .map(orderMessagingDataMapper::productReservationResponseAvroModelToProductReservationResponse)
+                    .toList();
+                    
+            reservationResponseMessageListener.handleProductReservationResponses(responses);
+            
+        } catch (Exception e) {
+            log.error("Failed to process product reservation responses", e);
+        }
 
     }
 }

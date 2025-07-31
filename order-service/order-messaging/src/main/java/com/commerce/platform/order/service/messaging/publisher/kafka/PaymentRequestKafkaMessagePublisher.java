@@ -6,7 +6,7 @@ import com.commerce.platform.kafka.producer.KafkaMessageHelper;
 import com.commerce.platform.kafka.producer.service.KafkaProducer;
 import com.commerce.platform.order.service.domain.config.OrderServiceConfigData;
 import com.commerce.platform.order.service.domain.outbox.model.payment.OrderPaymentEventPayload;
-import com.commerce.platform.order.service.domain.outbox.model.payment.OrderPaymentOutboxMessage;
+import com.commerce.platform.order.service.domain.outbox.model.OrderOutboxMessage;
 import com.commerce.platform.order.service.domain.ports.output.message.publisher.payment.PaymentRequestMessagePublisher;
 import com.commerce.platform.outbox.OutboxStatus;
 import lombok.extern.slf4j.Slf4j;
@@ -35,15 +35,15 @@ public class PaymentRequestKafkaMessagePublisher implements PaymentRequestMessag
     }
 
     @Override
-    public void publish(OrderPaymentOutboxMessage orderPaymentOutboxMessage,
-                        BiConsumer<OrderPaymentOutboxMessage, OutboxStatus> outboxCallback) {
+    public void publish(OrderOutboxMessage orderOutboxMessage,
+                        BiConsumer<OrderOutboxMessage, OutboxStatus> outboxCallback) {
         OrderPaymentEventPayload orderPaymentEventPayload =
-                kafkaMessageHelper.getOrderEventPayload(orderPaymentOutboxMessage.getPayload(),
+                kafkaMessageHelper.getOrderEventPayload(orderOutboxMessage.getPayload(),
                         OrderPaymentEventPayload.class);
 
-        UUID sagaId = orderPaymentOutboxMessage.getSagaId();
+        UUID sagaId = orderOutboxMessage.getSagaId();
 
-        log.info("Received OrderPaymentOutboxMessage for order id: {} and saga id: {}",
+        log.info("Received OrderOutboxMessage for order id: {} and saga id: {}",
                 orderPaymentEventPayload.getOrderId(),
                 sagaId);
 
@@ -56,7 +56,7 @@ public class PaymentRequestKafkaMessagePublisher implements PaymentRequestMessag
                     paymentRequestAvroModel)
                     .whenComplete(kafkaMessageHelper.getKafkaCallback(orderServiceConfigData.getPaymentRequestTopicName(),
                             paymentRequestAvroModel,
-                            orderPaymentOutboxMessage,
+                            orderOutboxMessage,
                             outboxCallback,
                             orderPaymentEventPayload.getOrderId(),
                             "PaymentRequestAvroModel"));

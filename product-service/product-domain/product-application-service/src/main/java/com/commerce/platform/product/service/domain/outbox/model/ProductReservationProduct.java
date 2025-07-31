@@ -3,13 +3,15 @@ package com.commerce.platform.product.service.domain.outbox.model;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
 @Getter
 @Builder
+@NoArgsConstructor
 @AllArgsConstructor
 public class ProductReservationProduct {
-    private final UUID id;
-    private final Integer quantity;
+    private UUID id;
+    private Integer quantity;
 } 

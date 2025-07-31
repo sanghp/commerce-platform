@@ -6,7 +6,7 @@ import com.commerce.platform.product.service.domain.valueobject.ProductReservati
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
+
 import com.commerce.platform.domain.valueobject.ProductId;
 import com.commerce.platform.domain.valueobject.OrderId;
 
