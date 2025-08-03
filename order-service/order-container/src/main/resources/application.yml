@@ -3,9 +3,16 @@ server:
 
 logging:
   level:
-    root: warn
-    org.springframework: warn
-    org.springframework.boot: warn
+    # root: warn
+    # org.springframework: warn
+    # org.springframework.boot: warn
+    # org.hibernate.SQL: off
+    # org.hibernate.type.descriptor.sql: off
+    # com.zaxxer.hikari: error
+    # org.apache.coyote.http11: off
+    root: off
+    org.springframework: off
+    org.springframework.boot: off
     org.hibernate.SQL: off
     org.hibernate.type.descriptor.sql: off
     com.zaxxer.hikari: error
@@ -17,8 +24,16 @@ order-service:
   payment-request-topic-name: payment-request
   payment-response-topic-name: payment-response
   customer-topic-name: customer
-  outbox-scheduler-fixed-rate: 100
+  outbox-scheduler-fixed-rate: 50
   outbox-scheduler-initial-delay: 1000
+  outbox-scheduler-batch-size: 100
+  outbox-processing-timeout-minutes: 5
+  outbox-cleaner-cron: "@midnight"
+  outbox-cleaner-batch-size: 100
+  inbox-scheduler-fixed-rate: 50
+  inbox-retry-scheduler-fixed-rate: 1000
+  inbox-max-retry-count: 3
+  inbox-batch-size: 200
 
 product-service:
   url: http://localhost:8182
@@ -42,6 +57,11 @@ spring:
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
     platform: mysql
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 20
+      connection-test-query: SELECT 1
+      pool-name: OrderServiceHikariPool
   sql:
     init:
       mode: always
@@ -51,17 +71,14 @@ kafka-config:
   bootstrap-servers: localhost:19092, localhost:19093, localhost:19094
   schema-registry-url-key: schema.registry.url
   schema-registry-url: http://localhost:18081
-  num-of-partitions: 3
-  replication-factor: 3
 
 kafka-producer-config:
   key-serializer-class: org.apache.kafka.common.serialization.UUIDSerializer
   value-serializer-class: io.confluent.kafka.serializers.KafkaAvroSerializer
-  compression-type: none
   acks: all
   batch-size: 16384
-  batch-size-boost-factor: 100
   linger-ms: 5
+  compression-type: none
   request-timeout-ms: 60000
   retry-count: 5
 
@@ -76,7 +93,7 @@ kafka-consumer-config:
   specific-avro-reader: true
   batch-listener: true
   auto-startup: true
-  concurrency-level: 3
+  concurrency-level: 10
   session-timeout-ms: 10000
   heartbeat-interval-ms: 3000
   max-poll-interval-ms: 300000

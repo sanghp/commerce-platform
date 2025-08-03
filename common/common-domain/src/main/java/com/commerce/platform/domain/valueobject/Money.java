@@ -37,6 +37,10 @@ public class Money {
         return this.amount != null && this.amount.compareTo(m.getAmount()) > 0;
     }
 
+    public boolean isGreaterThanOrEqualTo(Money m) {
+        return this.amount != null && this.amount.compareTo(m.getAmount()) >= 0;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -55,4 +59,5 @@ public class Money {
     private BigDecimal setScale(BigDecimal value) {
         return value.setScale(2, RoundingMode.HALF_EVEN);
     }
+
 }

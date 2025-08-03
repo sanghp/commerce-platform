@@ -68,6 +68,7 @@ services:
       KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,CONTROLLER://kafka3:9093,EXTERNAL://0.0.0.0:9092'
       KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka3:29092,EXTERNAL://localhost:19094'
 
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -95,12 +96,11 @@ services:
       echo 'Waiting for Kafka to be ready...'
       kafka-topics --bootstrap-server kafka1:29092 --list
 
-      echo 'Creating topics...'
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-request --partitions 10 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 10 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 10 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 10 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic customer --partitions 10 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-request --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic customer --partitions 30 --replication-factor 3
 
       echo 'Topics created:'
       kafka-topics --bootstrap-server kafka1:29092 --list
