@@ -14,10 +14,6 @@ public interface ProductOutboxRepository {
     
     List<ProductOutboxMessage> saveAll(List<ProductOutboxMessage> outboxMessages);
 
-    Optional<List<ProductOutboxMessage>> findByTypeAndOutboxStatus(ServiceMessageType type,
-                                                                  OutboxStatus outboxStatus);
-    Optional<ProductOutboxMessage> findByTypeAndSagaId(ServiceMessageType type, UUID sagaId);
-    Optional<ProductOutboxMessage> findBySagaId(UUID sagaId);
     void deleteByOutboxStatus(OutboxStatus outboxStatus);
 
     List<ProductOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit);

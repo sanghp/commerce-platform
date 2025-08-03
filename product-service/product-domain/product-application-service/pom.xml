@@ -36,5 +36,9 @@
             <groupId>com.commerce.platform</groupId>
             <artifactId>outbox</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.commerce.platform</groupId>
+            <artifactId>inbox</artifactId>
+        </dependency>
     </dependencies>
 </project> 

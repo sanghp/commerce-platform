@@ -31,6 +31,9 @@ public class ProductReservationDataAccessMapper {
                 .productId(new ProductId(productReservationEntity.getProductId()))
                 .orderId(new OrderId(productReservationEntity.getOrderId()))
                 .quantity(productReservationEntity.getQuantity())
+                .status(productReservationEntity.getStatus())
+                .createdAt(productReservationEntity.getCreatedAt())
+                .updatedAt(productReservationEntity.getUpdatedAt())
                 .build();
     }
 

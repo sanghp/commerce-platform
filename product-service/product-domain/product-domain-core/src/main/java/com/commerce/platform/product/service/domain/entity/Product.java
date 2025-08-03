@@ -15,7 +15,8 @@ public class Product extends AggregateRoot<ProductId> {
     @Setter
     private String name;
     private final Money price;
-    private final Integer quantity;
+    @Setter
+    private Integer quantity;
     @Setter
     private Integer reservedQuantity;
     private final boolean enabled;
@@ -120,6 +121,44 @@ public class Product extends AggregateRoot<ProductId> {
         }
         
         this.reservedQuantity -= cancelledQuantity;
+    }
+
+    public void confirmReservation(Integer confirmedQuantity) {
+        validateQuantity();
+        validateReservedQuantity();
+        if (confirmedQuantity == null) {
+            throw new ProductDomainException("Confirmed quantity cannot be null");
+        }
+        if (confirmedQuantity <= 0) {
+            throw new ProductDomainException("Confirmed quantity must be greater than zero");
+        }
+        
+        if (reservedQuantity < confirmedQuantity) {
+            throw new ProductDomainException("Cannot confirm more than reserved quantity. Reserved: " + reservedQuantity + ", Confirmed: " + confirmedQuantity);
+        }
+        
+        if (quantity < confirmedQuantity) {
+            throw new ProductDomainException("Cannot confirm more than available quantity. Available: " + quantity + ", Confirmed: " + confirmedQuantity);
+        }
+        
+        this.quantity -= confirmedQuantity;
+        this.reservedQuantity -= confirmedQuantity;
+    }
+
+    public void restoreReservedQuantity(Integer restoredQuantity) {
+        validateReservedQuantity();
+        if (restoredQuantity == null) {
+            throw new ProductDomainException("Restored quantity cannot be null");
+        }
+        if (restoredQuantity <= 0) {
+            throw new ProductDomainException("Restored quantity must be greater than zero");
+        }
+        
+        if (reservedQuantity < restoredQuantity) {
+            throw new ProductDomainException("Cannot restore more than reserved quantity. Reserved: " + reservedQuantity + ", Restored: " + restoredQuantity);
+        }
+        
+        this.reservedQuantity -= restoredQuantity;
     }
 
 }

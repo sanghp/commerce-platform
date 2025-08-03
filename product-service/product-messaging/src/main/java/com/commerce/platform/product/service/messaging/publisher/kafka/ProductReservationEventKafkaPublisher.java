@@ -51,7 +51,7 @@ public class ProductReservationEventKafkaPublisher implements ProductReservation
 
         try {
             var productReservationResponseAvroModel = productMessagingDataMapper
-                    .productReservationResponseEventToResponseAvroModel(sagaId, responseEventPayload);
+                    .productReservationResponseEventToResponseAvroModel(outboxMessage.getMessageId(), sagaId, responseEventPayload);
 
             kafkaProducer.send(productServiceConfigData.getProductReservationResponseTopicName(),
                     sagaId,

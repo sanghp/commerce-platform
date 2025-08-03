@@ -23,12 +23,17 @@ public class ProductReservation extends AggregateRoot<ProductReservationId> {
     public ProductReservation(ProductReservationId productReservationId,
                              ProductId productId,
                              OrderId orderId,
-                             Integer quantity) {
+                             Integer quantity,
+                             ProductReservationStatus status,
+                             ZonedDateTime createdAt,
+                             ZonedDateTime updatedAt) {
         super.setId(productReservationId);
         this.productId = productId;
         this.orderId = orderId;
         this.quantity = quantity;
-        this.status = ProductReservationStatus.PENDING;
+        this.status = status != null ? status : ProductReservationStatus.PENDING;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public void initializeReservation(ZonedDateTime createdAt) {

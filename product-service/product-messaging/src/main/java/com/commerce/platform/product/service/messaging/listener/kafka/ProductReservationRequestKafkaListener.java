@@ -45,16 +45,11 @@ public class ProductReservationRequestKafkaListener implements KafkaConsumer<Pro
                 partitions.toString(),
                 offsets.toString());
 
-        try {
-            List<ProductReservationRequest> requests = messages.stream()
-                    .map(productMessagingDataMapper::productReservationRequestAvroModelToProductReservation)
-                    .toList();
-                    
-            productReservationRequestListener.saveToInbox(requests);
-            
-        } catch (Exception e) {
-            log.error("Failed to process product reservation requests", e);
-        }
+        List<ProductReservationRequest> requests = messages.stream()
+                .map(productMessagingDataMapper::productReservationRequestAvroModelToProductReservation)
+                .toList();
+                
+        productReservationRequestListener.saveToInbox(requests);
     }
 }
 

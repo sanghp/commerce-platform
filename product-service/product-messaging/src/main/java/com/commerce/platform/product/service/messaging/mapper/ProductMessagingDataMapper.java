@@ -34,11 +34,12 @@ public class ProductMessagingDataMapper {
     }
 
     public ProductReservationResponseAvroModel productReservationResponseEventToResponseAvroModel(
+            UUID messageId,
             UUID sagaId,
             ProductReservationResponseEventPayload responseEventPayload
     ) {
         return ProductReservationResponseAvroModel.newBuilder()
-                .setId(sagaId)
+                .setId(messageId)
                 .setSagaId(sagaId)
                 .setOrderId(responseEventPayload.getOrderId())
                 .setProductReservationStatus(
