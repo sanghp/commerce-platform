@@ -10,5 +10,11 @@
     </parent>
 
     <artifactId>payment-domain-core</artifactId>
+    <dependencies>
+        <dependency>
+            <groupId>com.commerce.platform</groupId>
+            <artifactId>common-domain</artifactId>
+        </dependency>
+    </dependencies>
 
 </project>

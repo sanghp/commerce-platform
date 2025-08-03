@@ -1,0 +1,28 @@
+package com.commerce.platform.payment.service.domain.inbox.model;
+
+import com.commerce.platform.domain.event.ServiceMessageType;
+import com.commerce.platform.inbox.InboxStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+@Getter
+@Setter
+@Builder
+@AllArgsConstructor
+public class PaymentInboxMessage {
+    private final UUID id;
+    private final UUID messageId;
+    private final UUID sagaId;
+    private final ServiceMessageType type;
+    private final String payload;
+    private InboxStatus status;
+    private final ZonedDateTime receivedAt;
+    private ZonedDateTime processedAt;
+    private Integer retryCount;
+    private String errorMessage;
+}

@@ -11,4 +11,22 @@
 
     <artifactId>payment-messaging</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.commerce.platform</groupId>
+            <artifactId>payment-application-service</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.commerce.platform</groupId>
+            <artifactId>kafka-producer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.commerce.platform</groupId>
+            <artifactId>kafka-consumer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.commerce.platform</groupId>
+            <artifactId>kafka-model</artifactId>
+        </dependency>
+    </dependencies>
 </project>
