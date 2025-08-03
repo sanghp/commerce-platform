@@ -2,9 +2,9 @@
 
 > ⚠️ **개발 진행 중**
 >
-> *   **구현 완료**: `Order Service`, `Product Service`  
-> *   **핵심 기능**: 주문 생성부터 재고 예약까지의 분산 트랜잭션 처리
-> *   **구현 예정**: `Payment Service`, `Customer Service`
+> *   **구현 완료**: `Order Service`, `Product Service`, `Payment Service`
+> *   **핵심 기능**: 주문-재고-결제 전체 플로우의 분산 트랜잭션 처리
+> *   **구현 예정**: `Customer Service` (CQRS 읽기 모델)
 
 Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼의 주문 처리 시스템입니다.
 
@@ -25,6 +25,7 @@ Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼�
 - **DDD & Clean Architecture**: Dependency Rule에 따라 모든 종속성이 내부 계층으로 향하도록 설계했습니다. 이를 통해 외부 프레임워크나 인프라(DB, Messaging 등)의 변화로부터 핵심 비즈니스 로직을 보호하고 시스템의 유연성과 테스트 용이성을 확보합니다.
 - **CQRS**: 명령(Command)과 조회(Query)의 책임을 분리하여 시스템의 성능과 확장성을 향상시킵니다. `Order Service`에서 발생한 주문 완료 이벤트를 `Customer Service`가 구독하여 조회에 최적화된 별도의 **`주문 내역` 테이블을 유지합니다.** 이를 통해 사용자는 자신의 주문 내역을 빠르고 안정적으로 조회할 수 있으며 쓰기(Write)와 읽기(Read) 모델의 관심사를 분리하여 각 서비스의 독립성을 높입니다.
 - **Outbox Pattern & Kafka**: 이벤트 발행시 로컬 트랜잭션으로 Outbox 테이블에 이벤트를 저장한 뒤 Kafka에 발행하여 Eventual Consistency를 구현합니다.
+- **Inbox Pattern**: 메시지 중복 처리 방지를 위해 Inbox 패턴을 구현하여 이벤트 소비의 멱등성을 보장합니다.
 
 ---
 
@@ -57,18 +58,18 @@ Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼�
 3.  **결제 요청 (Order Service)**:
     *   `Order Service`는 재고 예약 성공 메세지를 구독한 뒤 `payment-request` 토픽으로 결제 요청 메시지를 발행합니다.
 
-4.  **결제 처리 및 응답 (Payment Service) `(구현 예정)`**:
+4.  **결제 처리 및 응답 (Payment Service)**:
     *   `Payment Service`는 결제 처리 후, `payment-response` 토픽으로 결과를 발행합니다. 이 메시지에는 결제 성공/실패 여부를 나타내는 `PaymentStatus`가 포함됩니다.
 
-5.  **재고 확정 및 주문 완료 `(구현 예정)`**:
+5.  **재고 확정 및 주문 완료**:
     *   `Order Service`는 결제 성공 메세지를 구독하면 주문 상태를 `PAID`로 변경합니다.
     *   이후 예약된 재고를 확정(차감)하기 위해 `product-reservation-request` 토픽으로 `OrderStatus`가 `BOOKED`로 설정된 메시지를 다시 발행합니다.
     *   `Product Service`는 해당 메시지를 구독하여 재고를 차감하고 `product-reservation-response` 토픽에 `OrderStatus`를 `CONFIRMED`로 설정하여 메세지를 발행합니다.
     *   `Order Service`가 해당 메세지를 구독하면 주문을 완료 처리하고 Saga 트랜잭션을 종료합니다.
 
-6.  **보상 트랜잭션 (실패 처리) `(일부 구현)`**:
+6.  **보상 트랜잭션 (실패 처리)**:
     *   **재고 예약 실패 시**: `Product Service`는 재고 예약에 실패하면 `product-reservation-response` 토픽으로 `ReservationStatus`를 `REJECTED`로 설정하여 응답합니다. `Order Service`는 이 메시지를 구독하여 주문 상태를 `CANCELLED`로 변경하고 Saga를 종료합니다.
-    *   **결제 실패 시 `(구현 예정)`**: `Payment Service`의 결제 실패 응답을 구독한 `Order Service`는 보상 트랜잭션을 시작합니다. `product-reservation-request` 토픽으로 `OrderStatus`를 `CANCELLED`로 설정하고 메시지를 발행하여 `Product Service`에 예약된 재고가 해제되도록 요청합니다. `Product Service`가 재고를 해제하고 `ReservationStatus`를 `CANCELLED`로 설정하여 메세지를 발행하면 `Order Service`는 주문의 상태를 최종적으로 `CANCELLED`로 변경하고 Saga를 종료합니다.
+    *   **결제 실패 시**: `Payment Service`의 결제 실패 응답을 구독한 `Order Service`는 보상 트랜잭션을 시작합니다. `product-reservation-request` 토픽으로 `OrderStatus`를 `CANCELLED`로 설정하고 메시지를 발행하여 `Product Service`에 예약된 재고가 해제되도록 요청합니다. `Product Service`가 재고를 해제하고 `ReservationStatus`를 `CANCELLED`로 설정하여 메세지를 발행하면 `Order Service`는 주문의 상태를 최종적으로 `CANCELLED`로 변경하고 Saga를 종료합니다.
 
 ---
 
@@ -100,6 +101,7 @@ docker compose -f infrastructure/docker-compose/docker-compose.yml up -d
 | ------------------ |----------------------------------------------------------------------------------------------|
 | **Order Service**  | `java -jar order-service/order-container/target/order-container-0.0.1-SNAPSHOT.jar`          |
 | **Product Service**| `java -jar product-service/product-container/target/product-container-0.0.1-SNAPSHOT.jar`    |
+| **Payment Service**| `java -jar payment-service/payment-container/target/payment-container-0.0.1-SNAPSHOT.jar`    |
 
 ---
 
@@ -107,8 +109,9 @@ docker compose -f infrastructure/docker-compose/docker-compose.yml up -d
 
 애플리케이션 실행 후, 아래 링크를 통해 각 서비스의 API 문서를 확인하거나 Kafka UI에 접근할 수 있습니다.
 
-- **Order Service API**: [http://localhost:8181/swagger-ui.html](http://localhost:8081/swagger-ui.html)
-- **Product Service API**: [http://localhost:8182/swagger-ui.html](http://localhost:8082/swagger-ui.html)
+- **Order Service API**: [http://localhost:8181/swagger-ui.html](http://localhost:8181/swagger-ui.html)
+- **Product Service API**: [http://localhost:8182/swagger-ui.html](http://localhost:8182/swagger-ui.html)
+- **Payment Service API**: [http://localhost:8183/swagger-ui.html](http://localhost:8183/swagger-ui.html)
 - **Kafka UI**: [http://localhost:28080](http://localhost:28080)
 
 ---
@@ -199,6 +202,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: root
+      TZ: UTC
     ports:
       - "13306:3306"
 
@@ -249,6 +253,7 @@ services:
       KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,CONTROLLER://kafka3:9093,EXTERNAL://0.0.0.0:9092'
       KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka3:29092,EXTERNAL://localhost:19094'
 
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -262,10 +267,35 @@ services:
       - kafka1
       - kafka2
       - kafka3
-      - schema-registry 
+      - schema-registry
+
+  init-kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      echo 'Waiting for Kafka to be ready...'
+      kafka-topics --bootstrap-server kafka1:29092 --list
+
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-request --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic customer --partitions 30 --replication-factor 3
+
+      echo 'Topics created:'
+      kafka-topics --bootstrap-server kafka1:29092 --list
+      " 
 ```
 
 ---
 
 ## 📌 향후 개선 계획
+-   **Customer Service 구현**: CQRS 패턴의 읽기 모델로 Customer Service를 구현하여 고객별 주문 내역 조회를 최적화합니다.
 -   **CDC(Change Data Capture) 도입**: Debezium을 활용하여 Outbox 패턴을 CDC 기반 이벤트 발행으로 전환합니다. 이를 통해 애플리케이션의 비즈니스 로직과 이벤트 발행 메커니즘을 완전히 분리하여 결합도를 낮출 수 있습니다.
+-   **모니터링 및 추적**: OpenTelemetry, Prometheus, Grafana를 활용한 분산 추적 및 모니터링 시스템 구축
+-   **테스트 커버리지 향상**: 단위 테스트, 통합 테스트, E2E 테스트 작성
