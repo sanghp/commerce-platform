@@ -2,8 +2,8 @@ package com.commerce.platform.order.service.domain.ports.input.message.listener.
 
 import com.commerce.platform.order.service.domain.dto.message.PaymentResponse;
 
-public interface PaymentResponseMessageListener {
-    void paymentCompleted(PaymentResponse paymentResponse);
+import java.util.List;
 
-    void paymentCancelled(PaymentResponse paymentResponse);
+public interface PaymentResponseMessageListener {
+    void saveToInbox(List<PaymentResponse> paymentResponses);
 }

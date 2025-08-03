@@ -3,7 +3,7 @@ package com.commerce.platform.order.service.domain;
 import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.order.service.domain.dto.message.ProductReservationResponse;
 import com.commerce.platform.order.service.domain.exception.OrderDomainException;
-import com.commerce.platform.order.service.domain.inbox.model.InboxStatus;
+import com.commerce.platform.inbox.InboxStatus;
 import com.commerce.platform.order.service.domain.inbox.model.OrderInboxMessage;
 import com.commerce.platform.order.service.domain.ports.input.message.listener.product.ProductReservationResponseMessageListener;
 import com.commerce.platform.order.service.domain.ports.output.repository.OrderInboxRepository;
@@ -53,6 +53,7 @@ public class ProductReservationResponseMessageListenerImpl implements ProductRes
     private OrderInboxMessage createInboxMessage(ProductReservationResponse productReservationResponse, ZonedDateTime receivedAt) {
         return OrderInboxMessage.builder()
                 .id(UuidGenerator.generate())
+                .messageId(productReservationResponse.getId())
                 .sagaId(productReservationResponse.getSagaId())
                 .type(ServiceMessageType.PRODUCT_RESERVATION_RESPONSE)
                 .payload(createPayload(productReservationResponse))

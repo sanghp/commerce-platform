@@ -20,10 +20,6 @@ public interface OrderOutboxRepository {
                                                                   ZonedDateTime fetchedAtBefore, 
                                                                   int limit);
 
-    Optional<OrderOutboxMessage> findByTypeAndSagaIdAndOutboxStatus(String type,
-                                                                     UUID sagaId,
-                                                                     OutboxStatus outboxStatus);
-
     int deleteByOutboxStatus(OutboxStatus outboxStatus, int limit);
     
     Optional<OrderOutboxMessage> findById(UUID id);

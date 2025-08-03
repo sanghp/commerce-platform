@@ -41,16 +41,11 @@ public class ProductReservationResponseKafkaListener implements KafkaConsumer<Pr
                 partitions.toString(),
                 offsets.toString());
 
-        try {
-            List<ProductReservationResponse> responses = messages.stream()
-                    .map(orderMessagingDataMapper::productReservationResponseAvroModelToProductReservationResponse)
-                    .toList();
-                    
-            reservationResponseMessageListener.saveToInbox(responses);
-            
-        } catch (Exception e) {
-            log.error("Failed to process product reservation responses", e);
-        }
+        List<ProductReservationResponse> responses = messages.stream()
+                .map(orderMessagingDataMapper::productReservationResponseAvroModelToProductReservationResponse)
+                .toList();
+                
+        reservationResponseMessageListener.saveToInbox(responses);
 
     }
 }

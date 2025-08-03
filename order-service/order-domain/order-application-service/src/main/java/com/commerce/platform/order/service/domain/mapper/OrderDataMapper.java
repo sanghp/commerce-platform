@@ -84,6 +84,11 @@ public class OrderDataMapper {
                 .price(domainEvent.getOrder().getPrice().getAmount())
                 .createdAt(domainEvent.getCreatedAt())
                 .reservationOrderStatus(ProductReservationOrderStatus.PAID)
+                .products(domainEvent.getOrder().getItems().stream().map(item ->
+                                ProductReservationEventProduct.builder()
+                                        .id(item.getProduct().getId().getValue())
+                                        .quantity(item.getQuantity())
+                                        .build()).collect(Collectors.toList()))
                 .build();
     }
 
@@ -95,6 +100,11 @@ public class OrderDataMapper {
                 .price(domainEvent.getOrder().getPrice().getAmount())
                 .createdAt(domainEvent.getCreatedAt())
                 .reservationOrderStatus(ProductReservationOrderStatus.CANCELLED)
+                .products(domainEvent.getOrder().getItems().stream().map(item ->
+                                ProductReservationEventProduct.builder()
+                                        .id(item.getProduct().getId().getValue())
+                                        .quantity(item.getQuantity())
+                                        .build()).collect(Collectors.toList()))
                 .build();
     }
 

@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -26,6 +27,12 @@ public class OrderEntity {
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
     private String failureMessages;
+    private LocalDateTime createdAt;
+    private LocalDateTime reservedAt;
+    private LocalDateTime paidAt;
+    private LocalDateTime confirmedAt;
+    private LocalDateTime cancellingAt;
+    private LocalDateTime cancelledAt;
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     private OrderAddressEntity address;

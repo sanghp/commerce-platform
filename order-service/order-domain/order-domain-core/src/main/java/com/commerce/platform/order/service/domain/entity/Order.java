@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import com.commerce.platform.domain.util.UuidGenerator;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -23,6 +24,12 @@ public class Order extends AggregateRoot<OrderId>
     private TrackingId trackingId;
     private OrderStatus orderStatus;
     private List<String> failureMessages;
+    private LocalDateTime createdAt;
+    private LocalDateTime reservedAt;
+    private LocalDateTime paidAt;
+    private LocalDateTime confirmedAt;
+    private LocalDateTime cancellingAt;
+    private LocalDateTime cancelledAt;
 
     public static final String FAILURE_MESSAGE_DELIMITER = ",";
 
@@ -34,7 +41,13 @@ public class Order extends AggregateRoot<OrderId>
                  List<OrderItem> items,
                  TrackingId trackingId,
                  OrderStatus orderStatus,
-                 List<String> failureMessages) {
+                 List<String> failureMessages,
+                 LocalDateTime createdAt,
+                 LocalDateTime reservedAt,
+                 LocalDateTime paidAt,
+                 LocalDateTime confirmedAt,
+                 LocalDateTime cancellingAt,
+                 LocalDateTime cancelledAt) {
         super.setId(orderId);
         this.customerId = customerId;
         this.deliveryAddress = deliveryAddress;
@@ -43,12 +56,19 @@ public class Order extends AggregateRoot<OrderId>
         this.trackingId = trackingId;
         this.orderStatus = orderStatus;
         this.failureMessages = failureMessages;
+        this.createdAt = createdAt;
+        this.reservedAt = reservedAt;
+        this.paidAt = paidAt;
+        this.confirmedAt = confirmedAt;
+        this.cancellingAt = cancellingAt;
+        this.cancelledAt = cancelledAt;
     }
 
     public void initializeOrder() {
         setId(new OrderId(UuidGenerator.generate()));
         trackingId = new TrackingId(UuidGenerator.generate());
         orderStatus = OrderStatus.PENDING;
+        createdAt = LocalDateTime.now();
         initializeOrderItems();
     }
 
@@ -63,6 +83,7 @@ public class Order extends AggregateRoot<OrderId>
             throw new OrderDomainException("Order is not in correct state for approve operation!");
         }
         orderStatus = OrderStatus.RESERVED;
+        reservedAt = LocalDateTime.now();
     }
 
     public void pay() {
@@ -70,6 +91,7 @@ public class Order extends AggregateRoot<OrderId>
             throw new OrderDomainException("Order is not in correct state for pay operation!");
         }
         orderStatus = OrderStatus.PAID;
+        paidAt = LocalDateTime.now();
     }
 
 
@@ -78,13 +100,15 @@ public class Order extends AggregateRoot<OrderId>
             throw new OrderDomainException("Order is not in correct state for pay operation!");
         }
         orderStatus = OrderStatus.CONFIRMED;
+        confirmedAt = LocalDateTime.now();
     }
 
     public void cancel(List<String> failureMessages) {
-        if (!(orderStatus == OrderStatus.RESERVED || orderStatus == OrderStatus.PENDING)) {
+        if (!(orderStatus == OrderStatus.PENDING || orderStatus == OrderStatus.CANCELLING)) {
             throw new OrderDomainException("Order is not in correct state for cancel operation!");
         }
         orderStatus = OrderStatus.CANCELLED;
+        cancelledAt = LocalDateTime.now();
         updateFailureMessages(failureMessages);
     }
 
@@ -140,6 +164,7 @@ public class Order extends AggregateRoot<OrderId>
             throw new OrderDomainException("Order is not in correct state for initCancel operation!");
         }
         orderStatus = OrderStatus.CANCELLING;
+        cancellingAt = LocalDateTime.now();
         updateFailureMessages(failureMessages);
     }
 

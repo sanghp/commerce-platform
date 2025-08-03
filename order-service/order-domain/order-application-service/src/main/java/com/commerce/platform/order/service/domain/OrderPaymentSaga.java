@@ -44,27 +44,8 @@ public class OrderPaymentSaga implements SagaStep<PaymentResponse> {
     @Override
     @Transactional
     public void process(PaymentResponse paymentResponse) {
-        Optional<OrderOutboxMessage> orderOutboxMessageResponse =
-                orderOutboxHelper.getOrderOutboxMessageByTypeAndSagaIdAndOutboxStatus(
-                        ServiceMessageType.PAYMENT_REQUEST.name(),
-                        paymentResponse.getSagaId(),
-                        OutboxStatus.STARTED);
-
-        if (orderOutboxMessageResponse.isEmpty()) {
-            log.info("An outbox message with saga id: {} is already processed!", paymentResponse.getSagaId());
-
-            return;
-        }
-
-        OrderOutboxMessage orderOutboxMessage = orderOutboxMessageResponse.get();
         OrderPaidEvent domainEvent = completePaymentForOrder(paymentResponse);
-        
-        // Update payment outbox message status
-        orderOutboxMessage.setOutboxStatus(OutboxStatus.COMPLETED);
-        orderOutboxMessage.setProcessedAt(ZonedDateTime.now(ZoneOffset.UTC));
-        orderOutboxHelper.save(orderOutboxMessage);
 
-        // Save product reservation request
         orderOutboxHelper.saveOrderOutboxMessage(
                 ServiceMessageType.PRODUCT_RESERVATION_REQUEST,
                 orderDataMapper.orderPaidEventToProductReservationEventPayload(domainEvent),
@@ -77,33 +58,16 @@ public class OrderPaymentSaga implements SagaStep<PaymentResponse> {
     @Override
     @Transactional
     public void rollback(PaymentResponse paymentResponse) {
-        Optional<OrderOutboxMessage> orderOutboxMessageResponse =
-                orderOutboxHelper.getOrderOutboxMessageByTypeAndSagaIdAndOutboxStatus(
-                        ServiceMessageType.PAYMENT_REQUEST.name(),
-                        paymentResponse.getSagaId(),
-                        OutboxStatus.STARTED);
-
-        if (orderOutboxMessageResponse.isEmpty()) {
-            log.info("An outbox message with saga id: {} is already roll backed!", paymentResponse.getSagaId());
-            return;
-        }
-
-        OrderOutboxMessage orderOutboxMessage = orderOutboxMessageResponse.get();
         OrderCancelledEvent domainEvent = rollbackReservationForOrder(paymentResponse);
-        
-        // Update payment outbox message status
-        orderOutboxMessage.setOutboxStatus(OutboxStatus.COMPLETED);
-        orderOutboxMessage.setProcessedAt(ZonedDateTime.now(ZoneOffset.UTC));
-        orderOutboxHelper.save(orderOutboxMessage);
 
-        // Save product reservation cancellation request
         orderOutboxHelper.saveOrderOutboxMessage(
                 ServiceMessageType.PRODUCT_RESERVATION_REQUEST,
                 orderDataMapper.orderCancelledEventToOrderPaymentEventPayload(domainEvent),
                 OutboxStatus.STARTED,
                 paymentResponse.getSagaId());
 
-        log.info("Order with id: {} is cancelled", domainEvent.getOrder().getId().getValue());
+        log.info("Order with id: {} is cancelled due to payment failure, sending inventory restore request", 
+                domainEvent.getOrder().getId().getValue());
     }
 
     private Order findOrder(UUID orderId) {
