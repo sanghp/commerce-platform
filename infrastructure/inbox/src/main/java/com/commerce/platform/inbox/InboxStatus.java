@@ -1,4 +1,4 @@
-package com.commerce.platform.order.service.domain.inbox.model;
+package com.commerce.platform.inbox;
 
 public enum InboxStatus {
     RECEIVED,

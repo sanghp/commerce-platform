@@ -10,6 +10,7 @@ public class OrderInboxDataAccessMapper {
     public OrderInboxEntity orderInboxMessageToOrderInboxEntity(OrderInboxMessage orderInboxMessage) {
         return OrderInboxEntity.builder()
                 .id(orderInboxMessage.getId())
+                .messageId(orderInboxMessage.getMessageId())
                 .sagaId(orderInboxMessage.getSagaId())
                 .type(orderInboxMessage.getType())
                 .payload(orderInboxMessage.getPayload())
@@ -18,13 +19,13 @@ public class OrderInboxDataAccessMapper {
                 .processedAt(orderInboxMessage.getProcessedAt())
                 .retryCount(orderInboxMessage.getRetryCount())
                 .errorMessage(orderInboxMessage.getErrorMessage())
-                .version(orderInboxMessage.getVersion())
                 .build();
     }
 
     public OrderInboxMessage orderInboxEntityToOrderInboxMessage(OrderInboxEntity orderInboxEntity) {
         return OrderInboxMessage.builder()
                 .id(orderInboxEntity.getId())
+                .messageId(orderInboxEntity.getMessageId())
                 .sagaId(orderInboxEntity.getSagaId())
                 .type(orderInboxEntity.getType())
                 .payload(orderInboxEntity.getPayload())
@@ -33,7 +34,6 @@ public class OrderInboxDataAccessMapper {
                 .processedAt(orderInboxEntity.getProcessedAt())
                 .retryCount(orderInboxEntity.getRetryCount())
                 .errorMessage(orderInboxEntity.getErrorMessage())
-                .version(orderInboxEntity.getVersion())
                 .build();
     }
 }

@@ -1,10 +1,13 @@
 package com.commerce.platform.order.service.domain.inbox.scheduler;
 
 import com.commerce.platform.domain.event.ServiceMessageType;
+import com.commerce.platform.domain.valueobject.PaymentStatus;
 import com.commerce.platform.domain.valueobject.ProductReservationStatus;
+import com.commerce.platform.order.service.domain.OrderPaymentSaga;
 import com.commerce.platform.order.service.domain.ProductReservationSaga;
+import com.commerce.platform.order.service.domain.dto.message.PaymentResponse;
 import com.commerce.platform.order.service.domain.dto.message.ProductReservationResponse;
-import com.commerce.platform.order.service.domain.inbox.model.InboxStatus;
+import com.commerce.platform.inbox.InboxStatus;
 import com.commerce.platform.order.service.domain.inbox.model.OrderInboxMessage;
 import com.commerce.platform.order.service.domain.ports.output.repository.OrderInboxRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,13 +26,16 @@ public class InboxMessageHelper {
     
     private final OrderInboxRepository orderInboxRepository;
     private final ProductReservationSaga productReservationSaga;
+    private final OrderPaymentSaga orderPaymentSaga;
     private final ObjectMapper objectMapper;
     
     public InboxMessageHelper(OrderInboxRepository orderInboxRepository,
                               ProductReservationSaga productReservationSaga,
+                              OrderPaymentSaga orderPaymentSaga,
                               ObjectMapper objectMapper) {
         this.orderInboxRepository = orderInboxRepository;
         this.productReservationSaga = productReservationSaga;
+        this.orderPaymentSaga = orderPaymentSaga;
         this.objectMapper = objectMapper;
     }
     
@@ -56,6 +62,8 @@ public class InboxMessageHelper {
         try {
             if (inboxMessage.getType() == ServiceMessageType.PRODUCT_RESERVATION_RESPONSE) {
                 processProductReservationResponse(inboxMessage);
+            } else if (inboxMessage.getType() == ServiceMessageType.PAYMENT_RESPONSE) {
+                processPaymentResponse(inboxMessage);
             }
             
             inboxMessage.setStatus(InboxStatus.PROCESSED);
@@ -84,7 +92,6 @@ public class InboxMessageHelper {
         if (!failedMessages.isEmpty()) {
             log.info("Retrying {} failed messages", failedMessages.size());
             
-            // Reset all messages to RECEIVED status
             failedMessages.forEach(message -> message.setStatus(InboxStatus.RECEIVED));
             
             orderInboxRepository.saveAll(failedMessages);
@@ -104,6 +111,23 @@ public class InboxMessageHelper {
         } else {
             productReservationSaga.rollback(response);
             log.info("Product Reservation Saga rollback operation is completed for order id: {} with failure messages: {}",
+                    response.getOrderId(),
+                    String.join(FAILURE_MESSAGE_DELIMITER, response.getFailureMessages()));
+        }
+    }
+    
+    private void processPaymentResponse(OrderInboxMessage inboxMessage) throws Exception {
+        PaymentResponse response = objectMapper.readValue(
+                inboxMessage.getPayload(), 
+                PaymentResponse.class
+        );
+        
+        if (response.getPaymentStatus() == PaymentStatus.COMPLETED) {
+            orderPaymentSaga.process(response);
+            log.info("Payment completed for order id: {}", response.getOrderId());
+        } else {
+            orderPaymentSaga.rollback(response);
+            log.info("Payment failed for order id: {} with failure messages: {}",
                     response.getOrderId(),
                     String.join(FAILURE_MESSAGE_DELIMITER, response.getFailureMessages()));
         }

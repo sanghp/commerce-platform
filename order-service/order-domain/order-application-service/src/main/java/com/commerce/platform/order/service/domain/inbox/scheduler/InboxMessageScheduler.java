@@ -1,5 +1,6 @@
 package com.commerce.platform.order.service.domain.inbox.scheduler;
 
+import com.commerce.platform.inbox.InboxScheduler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -7,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class InboxMessageScheduler {
+public class InboxMessageScheduler implements InboxScheduler {
     
     @Value("${order-service.inbox-max-retry-count:3}")
     private int maxRetryCount;
@@ -21,6 +22,7 @@ public class InboxMessageScheduler {
         this.inboxMessageHelper = inboxMessageHelper;
     }
     
+    @Override
     @Scheduled(fixedDelayString = "${order-service.inbox-scheduler-fixed-rate:100}")
     public void processInboxMessages() {
         try {

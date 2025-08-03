@@ -61,13 +61,6 @@ public class OrderOutboxRepositoryImpl implements OrderOutboxRepository {
     }
 
     @Override
-    public Optional<OrderOutboxMessage> findByTypeAndSagaIdAndOutboxStatus(String type, UUID sagaId, OutboxStatus outboxStatus) {
-        return orderOutboxJpaRepository
-                .findByTypeAndSagaIdAndOutboxStatus(type, sagaId, outboxStatus)
-                .map(orderOutboxDataAccessMapper::orderOutboxEntityToOrderOutboxMessage);
-    }
-
-    @Override
     public int deleteByOutboxStatus(OutboxStatus outboxStatus, int limit) {
         List<OrderOutboxEntity> entitiesToDelete = orderOutboxJpaRepository
                 .findByOutboxStatusOrderByCreatedAt(outboxStatus, PageRequest.of(0, limit));

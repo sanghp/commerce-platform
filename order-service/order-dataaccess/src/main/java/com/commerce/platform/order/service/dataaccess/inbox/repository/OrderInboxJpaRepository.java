@@ -2,7 +2,7 @@ package com.commerce.platform.order.service.dataaccess.inbox.repository;
 
 import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.order.service.dataaccess.inbox.entity.OrderInboxEntity;
-import com.commerce.platform.order.service.domain.inbox.model.InboxStatus;
+import com.commerce.platform.inbox.InboxStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @Repository
 public interface OrderInboxJpaRepository extends JpaRepository<OrderInboxEntity, UUID> {
-    Optional<OrderInboxEntity> findBySagaIdAndType(UUID sagaId, ServiceMessageType type);
+    Optional<OrderInboxEntity> findByMessageId(UUID messageId);
     
     @Query(value = "SELECT * FROM order_inbox WHERE status = :#{#status.name()} ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
            nativeQuery = true)

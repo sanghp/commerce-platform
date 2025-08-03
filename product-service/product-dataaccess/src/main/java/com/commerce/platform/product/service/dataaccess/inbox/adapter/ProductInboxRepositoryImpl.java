@@ -3,7 +3,7 @@ package com.commerce.platform.product.service.dataaccess.inbox.adapter;
 import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.product.service.dataaccess.inbox.mapper.ProductInboxDataAccessMapper;
 import com.commerce.platform.product.service.dataaccess.inbox.repository.ProductInboxJpaRepository;
-import com.commerce.platform.product.service.domain.inbox.model.InboxStatus;
+import com.commerce.platform.inbox.InboxStatus;
 import com.commerce.platform.product.service.domain.inbox.model.ProductInboxMessage;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductInboxRepository;
 import org.springframework.data.domain.PageRequest;
@@ -47,8 +47,8 @@ public class ProductInboxRepositoryImpl implements ProductInboxRepository {
     }
 
     @Override
-    public Optional<ProductInboxMessage> findBySagaIdAndType(UUID sagaId, ServiceMessageType type) {
-        return productInboxJpaRepository.findBySagaIdAndType(sagaId, type)
+    public Optional<ProductInboxMessage> findByMessageId(UUID messageId) {
+        return productInboxJpaRepository.findByMessageId(messageId)
                 .map(productInboxDataAccessMapper::productInboxEntityToProductInboxMessage);
     }
     

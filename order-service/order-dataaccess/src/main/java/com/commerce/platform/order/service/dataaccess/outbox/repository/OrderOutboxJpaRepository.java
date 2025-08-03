@@ -20,6 +20,4 @@ public interface OrderOutboxJpaRepository extends JpaRepository<OrderOutboxEntit
                                                                                  ZonedDateTime fetchedAtBefore, 
                                                                                  Pageable pageable);
 
-    Optional<OrderOutboxEntity> findByTypeAndSagaIdAndOutboxStatus(String type, UUID sagaId, OutboxStatus outboxStatus);
-
 }

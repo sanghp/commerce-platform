@@ -37,10 +37,6 @@ public class OrderOutboxHelper {
         return orderOutboxRepository.findByOutboxStatusAndFetchedAtBefore(outboxStatus, fetchedAtBefore, limit);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<OrderOutboxMessage> getOrderOutboxMessageByTypeAndSagaIdAndOutboxStatus(String type, UUID sagaId, OutboxStatus outboxStatus) {
-        return orderOutboxRepository.findByTypeAndSagaIdAndOutboxStatus(type, sagaId, outboxStatus);
-    }
 
     @Transactional
     public void save(OrderOutboxMessage orderOutboxMessage) {
@@ -60,6 +56,7 @@ public class OrderOutboxHelper {
                                        UUID sagaId) {
         save(OrderOutboxMessage.builder()
                 .id(UuidGenerator.generate())
+                .messageId(UuidGenerator.generate())
                 .sagaId(sagaId)
                 .createdAt(ZonedDateTime.now())
                 .type(messageType.name())

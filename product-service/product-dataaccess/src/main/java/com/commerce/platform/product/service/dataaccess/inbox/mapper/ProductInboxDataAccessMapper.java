@@ -10,6 +10,7 @@ public class ProductInboxDataAccessMapper {
     public ProductInboxEntity productInboxMessageToProductInboxEntity(ProductInboxMessage productInboxMessage) {
         return ProductInboxEntity.builder()
                 .id(productInboxMessage.getId())
+                .messageId(productInboxMessage.getMessageId())
                 .sagaId(productInboxMessage.getSagaId())
                 .type(productInboxMessage.getType())
                 .payload(productInboxMessage.getPayload())
@@ -18,13 +19,13 @@ public class ProductInboxDataAccessMapper {
                 .processedAt(productInboxMessage.getProcessedAt())
                 .retryCount(productInboxMessage.getRetryCount())
                 .errorMessage(productInboxMessage.getErrorMessage())
-                .version(productInboxMessage.getVersion())
                 .build();
     }
     
     public ProductInboxMessage productInboxEntityToProductInboxMessage(ProductInboxEntity productInboxEntity) {
         return ProductInboxMessage.builder()
                 .id(productInboxEntity.getId())
+                .messageId(productInboxEntity.getMessageId())
                 .sagaId(productInboxEntity.getSagaId())
                 .type(productInboxEntity.getType())
                 .payload(productInboxEntity.getPayload())
@@ -33,7 +34,6 @@ public class ProductInboxDataAccessMapper {
                 .processedAt(productInboxEntity.getProcessedAt())
                 .retryCount(productInboxEntity.getRetryCount())
                 .errorMessage(productInboxEntity.getErrorMessage())
-                .version(productInboxEntity.getVersion())
                 .build();
     }
 }

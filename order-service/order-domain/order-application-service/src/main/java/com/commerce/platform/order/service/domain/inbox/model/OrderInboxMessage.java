@@ -1,6 +1,7 @@
 package com.commerce.platform.order.service.domain.inbox.model;
 
 import com.commerce.platform.domain.event.ServiceMessageType;
+import com.commerce.platform.inbox.InboxStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class OrderInboxMessage {
     private final UUID id;
+    private final UUID messageId;
     private final UUID sagaId;
     private final ServiceMessageType type;
     private final String payload;
@@ -23,5 +25,4 @@ public class OrderInboxMessage {
     private ZonedDateTime processedAt;
     private Integer retryCount;
     private String errorMessage;
-    private Integer version;
 }

@@ -12,7 +12,7 @@ import com.commerce.platform.product.service.domain.mapper.ProductDataMapper;
 import com.commerce.platform.product.service.domain.entity.Product;
 import com.commerce.platform.product.service.domain.entity.ProductReservation;
 import com.commerce.platform.product.service.domain.exception.ProductDomainException;
-import com.commerce.platform.product.service.domain.inbox.model.InboxStatus;
+import com.commerce.platform.inbox.InboxStatus;
 import com.commerce.platform.product.service.domain.inbox.model.ProductInboxMessage;
 import com.commerce.platform.product.service.domain.outbox.helper.ProductOutboxHelper;
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
@@ -65,7 +65,6 @@ public class InboxMessageHelper {
     
     @Transactional
     public boolean processNextMessage() {
-        // 메시지 조회
         List<ProductInboxMessage> messages = productInboxRepository
                 .findByStatusOrderByReceivedAtWithSkipLock(InboxStatus.RECEIVED, 1);
         
@@ -107,7 +106,6 @@ public class InboxMessageHelper {
         if (!failedMessages.isEmpty()) {
             log.info("Retrying {} failed messages", failedMessages.size());
             
-            // Reset all messages to RECEIVED status
             failedMessages.forEach(message -> message.setStatus(InboxStatus.RECEIVED));
             
             productInboxRepository.saveAll(failedMessages);
@@ -130,8 +128,25 @@ public class InboxMessageHelper {
         ProductReservationResponseEventPayload responsePayload;
         
         try {
-            responsePayload = processProductReservation(products, orderId, sagaId, requestTime);
-            log.info("Successfully processed product reservation for order id: {} with saga id: {}", orderId, sagaId);
+            switch (request.getReservationOrderStatus()) {
+                case PENDING:
+                    responsePayload = processProductReservation(products, orderId, sagaId, requestTime);
+                    log.info("Successfully processed product reservation for order id: {} with saga id: {}", orderId, sagaId);
+                    break;
+                    
+                case PAID:
+                    responsePayload = confirmProductReservation(orderId, sagaId, products, requestTime);
+                    log.info("Successfully confirmed product reservation for order id: {} with saga id: {}", orderId, sagaId);
+                    break;
+                    
+                case CANCELLED:
+                    responsePayload = cancelProductReservation(orderId, sagaId, products, requestTime);
+                    log.info("Successfully cancelled product reservation for order id: {} with saga id: {}", orderId, sagaId);
+                    break;
+                    
+                default:
+                    throw new ProductDomainException("Unknown reservation order status: " + request.getReservationOrderStatus());
+            }
         } catch (Exception e) {
             log.error("Failed to process product reservation for order id: {} with saga id: {}", orderId, sagaId, e);
             responsePayload = createFailurePayload(orderId, sagaId, products, requestTime, e.getMessage());
@@ -206,12 +221,123 @@ public class InboxMessageHelper {
     }
     
     private void saveOutboxMessage(UUID sagaId, ServiceMessageType type, ProductReservationResponseEventPayload responsePayload) {
-        try {
-            ProductOutboxMessage outboxMessage = createOutboxMessage(sagaId, type, responsePayload);
-            productOutboxHelper.save(outboxMessage);
-        } catch (DataIntegrityViolationException e) {
-            log.debug("Outbox message already exists for saga id: {}", sagaId);
+        ProductOutboxMessage outboxMessage = createOutboxMessage(sagaId, type, responsePayload);
+        productOutboxHelper.save(outboxMessage);
+        log.info("ProductOutboxMessage created for saga id: {} with status: {}", sagaId, responsePayload.getReservationStatus());
+    }
+    
+    private ProductReservationResponseEventPayload confirmProductReservation(
+            UUID orderId, UUID sagaId, List<Product> products, ZonedDateTime requestTime) {
+        List<ProductReservation> reservations = productReservationRepository.findByOrderId(new OrderId(orderId));
+        
+        if (reservations.isEmpty()) {
+            throw new ProductDomainException("No reservations found for order id: " + orderId);
         }
+        
+        Map<UUID, Integer> productQuantityMap = products.stream()
+                .collect(Collectors.toMap(p -> p.getId().getValue(), Product::getQuantity));
+        
+        for (ProductReservation reservation : reservations) {
+            Integer requestedQuantity = productQuantityMap.get(reservation.getProductId().getValue());
+            if (requestedQuantity == null) {
+                throw new ProductDomainException("Product " + reservation.getProductId().getValue() + 
+                        " in reservation not found in request");
+            }
+            if (!reservation.getQuantity().equals(requestedQuantity)) {
+                throw new ProductDomainException("Quantity mismatch for product " + reservation.getProductId().getValue() + 
+                        ". Reserved: " + reservation.getQuantity() + ", Requested: " + requestedQuantity);
+            }
+        }
+        
+        List<UUID> productIds = reservations.stream()
+                .map(r -> r.getProductId().getValue())
+                .sorted()
+                .toList();
+        
+        List<Product> productsToUpdate = productRepository.findByIdsForUpdate(productIds);
+        Map<UUID, Product> productMap = productsToUpdate.stream()
+                .collect(Collectors.toMap(p -> p.getId().getValue(), p -> p));
+        
+        for (ProductReservation reservation : reservations) {
+            Product product = productMap.get(reservation.getProductId().getValue());
+            if (product != null) {
+                product.confirmReservation(reservation.getQuantity());
+            }
+            reservation.confirm();
+        }
+        
+        productRepository.saveAll(productsToUpdate);
+        productReservationRepository.saveAll(reservations);
+        
+        return ProductReservationResponseEventPayload.builder()
+                .orderId(orderId)
+                .sagaId(sagaId)
+                .reservationStatus(ProductReservationStatus.BOOKED.name())
+                .failureMessages(new ArrayList<>())
+                .createdAt(requestTime)
+                .products(products.stream()
+                        .map(product -> ProductReservationProduct.builder()
+                                .id(product.getId().getValue())
+                                .quantity(product.getQuantity())
+                                .build())
+                        .collect(Collectors.toList()))
+                .build();
+    }
+    
+    private ProductReservationResponseEventPayload cancelProductReservation(
+            UUID orderId, UUID sagaId, List<Product> products, ZonedDateTime requestTime) { 
+        List<ProductReservation> reservations = productReservationRepository.findByOrderId(new OrderId(orderId));
+        
+        if (!reservations.isEmpty()) {
+            Map<UUID, Integer> productQuantityMap = products.stream()
+                    .collect(Collectors.toMap(p -> p.getId().getValue(), Product::getQuantity));
+            
+            for (ProductReservation reservation : reservations) {
+                Integer requestedQuantity = productQuantityMap.get(reservation.getProductId().getValue());
+                if (requestedQuantity == null) {
+                    throw new ProductDomainException("Product " + reservation.getProductId().getValue() + 
+                            " in reservation not found in request");
+                }
+                if (!reservation.getQuantity().equals(requestedQuantity)) {
+                    throw new ProductDomainException("Quantity mismatch for product " + reservation.getProductId().getValue() + 
+                            ". Reserved: " + reservation.getQuantity() + ", Requested: " + requestedQuantity);
+                }
+            }
+            
+            List<UUID> productIds = reservations.stream()
+                    .map(r -> r.getProductId().getValue())
+                    .sorted()
+                    .toList();
+            
+            List<Product> productsToUpdate = productRepository.findByIdsForUpdate(productIds);
+            Map<UUID, Product> productMap = productsToUpdate.stream()
+                    .collect(Collectors.toMap(p -> p.getId().getValue(), p -> p));
+            
+            for (ProductReservation reservation : reservations) {
+                Product product = productMap.get(reservation.getProductId().getValue());
+                if (product != null) {
+                    product.restoreReservedQuantity(reservation.getQuantity());
+                }
+                reservation.cancel();
+            }
+            
+            productRepository.saveAll(productsToUpdate);
+            productReservationRepository.saveAll(reservations);
+        }
+        
+        return ProductReservationResponseEventPayload.builder()
+                .orderId(orderId)
+                .sagaId(sagaId)
+                .reservationStatus(ProductReservationStatus.CANCELLED.name())
+                .failureMessages(new ArrayList<>())
+                .createdAt(requestTime)
+                .products(products.stream()
+                        .map(product -> ProductReservationProduct.builder()
+                                .id(product.getId().getValue())
+                                .quantity(product.getQuantity())
+                                .build())
+                        .collect(Collectors.toList()))
+                .build();
     }
     
     private ProductReservationResponseEventPayload createSuccessPayload(
@@ -254,6 +380,7 @@ public class InboxMessageHelper {
                                                     ProductReservationResponseEventPayload payload) {
         return ProductOutboxMessage.builder()
                 .id(UuidGenerator.generate())
+                .messageId(UuidGenerator.generate())
                 .sagaId(sagaId)
                 .createdAt(ZonedDateTime.now())
                 .type(type)

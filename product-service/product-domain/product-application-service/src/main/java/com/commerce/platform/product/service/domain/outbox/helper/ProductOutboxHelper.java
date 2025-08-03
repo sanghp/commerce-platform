@@ -48,15 +48,6 @@ public class ProductOutboxHelper {
         log.info("ProductOutboxMessage saved with outbox id: {}", outboxMessage.getId());
     }
 
-    @Transactional
-    public void updateOutboxMessage(ProductReservationResponseEventPayload payload, ServiceMessageType type, UUID sagaId) {
-        ProductOutboxMessage message = outboxRepository.findByTypeAndSagaId(type, sagaId)
-                .orElseThrow(() -> new ProductDomainException("Outbox message not found for type " + type + " and saga id: " + sagaId));
-
-        message.setPayload(createPayload(payload));
-        save(message);
-        log.info("ProductOutboxMessage updated for saga id: {}", sagaId);
-    }
     
     @Transactional
     public void updateOutboxMessagesStatus(List<ProductOutboxMessage> messages, OutboxStatus newStatus) {
@@ -65,15 +56,6 @@ public class ProductOutboxHelper {
         log.info("Updated {} ProductOutboxMessages to status: {}", messages.size(), newStatus);
     }
 
-    @Transactional(readOnly = true)
-    public boolean isMessageProcessed(ServiceMessageType type, UUID sagaId) {
-        return outboxRepository.findByTypeAndSagaId(type, sagaId).isPresent();
-    }
-    
-    @Transactional(readOnly = true)
-    public Optional<ProductOutboxMessage> findByTypeAndSagaId(ServiceMessageType type, UUID sagaId) {
-        return outboxRepository.findByTypeAndSagaId(type, sagaId);
-    }
 
     @Transactional
     public void deleteProductOutboxMessageByOutboxStatus(OutboxStatus outboxStatus) {

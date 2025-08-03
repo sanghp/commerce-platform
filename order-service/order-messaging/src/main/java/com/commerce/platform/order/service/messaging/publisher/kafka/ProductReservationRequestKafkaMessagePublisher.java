@@ -51,7 +51,7 @@ public class ProductReservationRequestKafkaMessagePublisher implements ProductRe
 
         try {
             ProductReservationRequestAvroModel productReservationRequestAvroModel = orderMessagingDataMapper
-                    .productReservationEventToRequestAvroModel(sagaId, productReservationEventPayload);
+                    .productReservationEventToRequestAvroModel(orderOutboxMessage.getMessageId(), sagaId, productReservationEventPayload);
 
             kafkaProducer.send(orderServiceConfigData.getProductReservationRequestTopicName(),
                     sagaId,

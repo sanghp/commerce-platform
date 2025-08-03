@@ -11,8 +11,10 @@ public class ProductOutboxDataAccessMapper {
                                                                                 outboxMessage) {
         return ProductOutboxEntity.builder()
                 .id(outboxMessage.getId())
+                .messageId(outboxMessage.getMessageId())
                 .sagaId(outboxMessage.getSagaId())
                 .createdAt(outboxMessage.getCreatedAt())
+                .fetchedAt(outboxMessage.getFetchedAt())
                 .processedAt(outboxMessage.getProcessedAt())
                 .type(outboxMessage.getType())
                 .payload(outboxMessage.getPayload())
@@ -25,8 +27,10 @@ public class ProductOutboxDataAccessMapper {
                                                                                 outboxEntity) {
         return ProductOutboxMessage.builder()
                 .id(outboxEntity.getId())
+                .messageId(outboxEntity.getMessageId())
                 .sagaId(outboxEntity.getSagaId())
                 .createdAt(outboxEntity.getCreatedAt())
+                .fetchedAt(outboxEntity.getFetchedAt())
                 .processedAt(outboxEntity.getProcessedAt())
                 .type(outboxEntity.getType())
                 .payload(outboxEntity.getPayload())

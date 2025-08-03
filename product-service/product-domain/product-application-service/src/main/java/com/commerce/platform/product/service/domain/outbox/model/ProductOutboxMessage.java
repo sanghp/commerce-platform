@@ -15,6 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ProductOutboxMessage {
     private final UUID id;
+    private final UUID messageId;
     private final UUID sagaId;
     private final ZonedDateTime createdAt;
     @Setter

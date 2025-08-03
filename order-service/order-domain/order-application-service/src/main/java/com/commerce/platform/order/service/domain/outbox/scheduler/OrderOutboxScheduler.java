@@ -99,7 +99,7 @@ public class OrderOutboxScheduler implements OutboxScheduler {
                     timedOutMessages.size());
             timedOutMessages.forEach(message -> {
                 message.setOutboxStatus(OutboxStatus.STARTED);
-                message.setFetchedAt(null);  // Reset fetched_at
+                message.setFetchedAt(null);
             });
             orderOutboxHelper.saveAll(timedOutMessages);
         }

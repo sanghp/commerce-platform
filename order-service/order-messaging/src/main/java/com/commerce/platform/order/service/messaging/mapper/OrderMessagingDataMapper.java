@@ -29,10 +29,10 @@ public class OrderMessagingDataMapper {
     }
 
     public ProductReservationRequestAvroModel
-    productReservationEventToRequestAvroModel(UUID sagaId, ProductReservationEventPayload
+    productReservationEventToRequestAvroModel(UUID messageId, UUID sagaId, ProductReservationEventPayload
             reservationEventPayload) {
         return ProductReservationRequestAvroModel.newBuilder()
-                .setId(UuidGenerator.generate())
+                .setId(messageId)
                 .setSagaId(sagaId)
                 .setReservationOrderStatus(com.commerce.platform.kafka.order.avro.model.ProductReservationOrderStatus
                         .valueOf(reservationEventPayload.getReservationOrderStatus().name()))
@@ -63,10 +63,10 @@ public class OrderMessagingDataMapper {
                 .build();
     }
 
-    public PaymentRequestAvroModel orderPaymentEventToPaymentRequestAvroModel(UUID sagaId, OrderPaymentEventPayload
+    public PaymentRequestAvroModel orderPaymentEventToPaymentRequestAvroModel(UUID messageId, UUID sagaId, OrderPaymentEventPayload
             orderPaymentEventPayload) {
         return PaymentRequestAvroModel.newBuilder()
-                .setId(UuidGenerator.generate())
+                .setId(messageId)
                 .setSagaId(sagaId)
                 .setCustomerId(orderPaymentEventPayload.getCustomerId())
                 .setOrderId(orderPaymentEventPayload.getOrderId())

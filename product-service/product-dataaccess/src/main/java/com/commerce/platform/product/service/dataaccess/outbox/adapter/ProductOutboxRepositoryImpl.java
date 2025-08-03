@@ -47,26 +47,6 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
     }
 
     @Override
-    public Optional<List<ProductOutboxMessage>> findByTypeAndOutboxStatus(ServiceMessageType type, OutboxStatus outboxStatus) {
-        return Optional.of(outboxJpaRepository.findByTypeAndOutboxStatus(type, outboxStatus).orElse(List.of())
-                .stream()
-                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
-                .collect(Collectors.toList()));
-    }
-
-    @Override
-    public Optional<ProductOutboxMessage> findByTypeAndSagaId(ServiceMessageType type, UUID sagaId) {
-        return outboxJpaRepository.findByTypeAndSagaId(type, sagaId)
-                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage);
-    }
-
-    @Override
-    public Optional<ProductOutboxMessage> findBySagaId(UUID sagaId) {
-        return outboxJpaRepository.findBySagaId(sagaId)
-                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage);
-    }
-
-    @Override
     public void deleteByOutboxStatus(OutboxStatus outboxStatus) {
         outboxJpaRepository.deleteByOutboxStatus(outboxStatus);
     }

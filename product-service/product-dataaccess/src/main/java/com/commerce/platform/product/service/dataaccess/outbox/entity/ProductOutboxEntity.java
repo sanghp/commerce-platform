@@ -20,6 +20,7 @@ public class ProductOutboxEntity {
 
     @Id
     private UUID id;
+    private UUID messageId;
     private UUID sagaId;
     private ZonedDateTime createdAt;
     private ZonedDateTime fetchedAt;

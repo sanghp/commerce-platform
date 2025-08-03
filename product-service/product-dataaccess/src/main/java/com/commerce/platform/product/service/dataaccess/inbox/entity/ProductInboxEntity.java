@@ -1,7 +1,7 @@
 package com.commerce.platform.product.service.dataaccess.inbox.entity;
 
 import com.commerce.platform.domain.event.ServiceMessageType;
-import com.commerce.platform.product.service.domain.inbox.model.InboxStatus;
+import com.commerce.platform.inbox.InboxStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,6 +21,8 @@ public class ProductInboxEntity {
     @Id
     private UUID id;
     
+    private UUID messageId;
+    
     private UUID sagaId;
     
     @Enumerated(EnumType.STRING)
@@ -38,9 +40,6 @@ public class ProductInboxEntity {
     private int retryCount;
     
     private String errorMessage;
-    
-    @Version
-    private int version;
     
     @Override
     public boolean equals(Object o) {

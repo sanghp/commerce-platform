@@ -10,8 +10,10 @@ public class OrderOutboxDataAccessMapper {
     public OrderOutboxEntity orderOutboxMessageToOutboxEntity(OrderOutboxMessage orderOutboxMessage) {
         return OrderOutboxEntity.builder()
                 .id(orderOutboxMessage.getId())
+                .messageId(orderOutboxMessage.getMessageId())
                 .sagaId(orderOutboxMessage.getSagaId())
                 .createdAt(orderOutboxMessage.getCreatedAt())
+                .fetchedAt(orderOutboxMessage.getFetchedAt())
                 .type(orderOutboxMessage.getType())
                 .payload(orderOutboxMessage.getPayload())
                 .outboxStatus(orderOutboxMessage.getOutboxStatus())
@@ -23,8 +25,10 @@ public class OrderOutboxDataAccessMapper {
     public OrderOutboxMessage orderOutboxEntityToOrderOutboxMessage(OrderOutboxEntity orderOutboxEntity) {
         return OrderOutboxMessage.builder()
                 .id(orderOutboxEntity.getId())
+                .messageId(orderOutboxEntity.getMessageId())
                 .sagaId(orderOutboxEntity.getSagaId())
                 .createdAt(orderOutboxEntity.getCreatedAt())
+                .fetchedAt(orderOutboxEntity.getFetchedAt())
                 .type(orderOutboxEntity.getType())
                 .payload(orderOutboxEntity.getPayload())
                 .outboxStatus(orderOutboxEntity.getOutboxStatus())

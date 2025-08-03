@@ -3,7 +3,7 @@ package com.commerce.platform.order.service.dataaccess.inbox.adapter;
 import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.order.service.dataaccess.inbox.mapper.OrderInboxDataAccessMapper;
 import com.commerce.platform.order.service.dataaccess.inbox.repository.OrderInboxJpaRepository;
-import com.commerce.platform.order.service.domain.inbox.model.InboxStatus;
+import com.commerce.platform.inbox.InboxStatus;
 import com.commerce.platform.order.service.domain.inbox.model.OrderInboxMessage;
 import com.commerce.platform.order.service.domain.ports.output.repository.OrderInboxRepository;
 import org.springframework.data.domain.PageRequest;
@@ -47,8 +47,8 @@ public class OrderInboxRepositoryImpl implements OrderInboxRepository {
     }
 
     @Override
-    public Optional<OrderInboxMessage> findBySagaIdAndType(UUID sagaId, ServiceMessageType type) {
-        return orderInboxJpaRepository.findBySagaIdAndType(sagaId, type)
+    public Optional<OrderInboxMessage> findByMessageId(UUID messageId) {
+        return orderInboxJpaRepository.findByMessageId(messageId)
                 .map(orderInboxDataAccessMapper::orderInboxEntityToOrderInboxMessage);
     }
     

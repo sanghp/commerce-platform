@@ -14,16 +14,7 @@ import java.util.UUID;
 @Repository
 public interface ProductOutboxJpaRepository extends JpaRepository<ProductOutboxEntity, UUID> {
 
-    Optional<List<ProductOutboxEntity>> findByTypeAndOutboxStatus(ServiceMessageType type,
-                                                                  OutboxStatus outboxStatus);
-
-    Optional<ProductOutboxEntity> findByTypeAndSagaId(ServiceMessageType type, UUID sagaId);
-
-    Optional<ProductOutboxEntity> findBySagaId(UUID sagaId);
-
     void deleteByOutboxStatus(OutboxStatus outboxStatus);
-
-    Optional<List<ProductOutboxEntity>> findByOutboxStatus(OutboxStatus outboxStatus);
     
     List<ProductOutboxEntity> findByOutboxStatus(OutboxStatus outboxStatus, Pageable pageable);
 }
