@@ -1,22 +1,22 @@
 server:
   port: 8181
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    env:
+      show-values: ALWAYS
+    health:
+      show-details: always
+
 logging:
   level:
-    # root: warn
-    # org.springframework: warn
-    # org.springframework.boot: warn
-    # org.hibernate.SQL: off
-    # org.hibernate.type.descriptor.sql: off
-    # com.zaxxer.hikari: error
-    # org.apache.coyote.http11: off
-    root: off
-    org.springframework: off
-    org.springframework.boot: off
-    org.hibernate.SQL: off
-    org.hibernate.type.descriptor.sql: off
-    com.zaxxer.hikari: error
-    org.apache.coyote.http11: off
+    root: INFO
+    com.commerce.platform: DEBUG
+    org.springframework.web.client: DEBUG
 
 order-service:
   product-reservation-request-topic-name: product-reservation-request
@@ -58,19 +58,20 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     platform: mysql
     hikari:
-      maximum-pool-size: 50
-      minimum-idle: 20
+      maximum-pool-size: 10
+      minimum-idle: 5
       connection-test-query: SELECT 1
       pool-name: OrderServiceHikariPool
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:init-schema.sql
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
 
 kafka-config:
-  bootstrap-servers: localhost:19092, localhost:19093, localhost:19094
+  bootstrap-servers: ${KAFKA_CONFIG_BOOTSTRAP_SERVERS:localhost:19092, localhost:19093, localhost:19094}
   schema-registry-url-key: schema.registry.url
-  schema-registry-url: http://localhost:18081
+  schema-registry-url: ${KAFKA_CONFIG_SCHEMA_REGISTRY_URL:http://localhost:18081}
 
 kafka-producer-config:
   key-serializer-class: org.apache.kafka.common.serialization.UUIDSerializer
@@ -101,3 +102,11 @@ kafka-consumer-config:
   max-partition-fetch-bytes-default: 1048576
   max-partition-fetch-bytes-boost-factor: 1
   poll-timeout-ms: 150
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  flyway:
+    enabled: false

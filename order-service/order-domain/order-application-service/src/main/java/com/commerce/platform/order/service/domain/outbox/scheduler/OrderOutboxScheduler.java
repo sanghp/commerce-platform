@@ -10,9 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,8 +35,8 @@ public class OrderOutboxScheduler implements OutboxScheduler {
     @Scheduled(fixedDelayString = "${order-service.outbox-scheduler-fixed-rate}",
             initialDelayString = "${order-service.outbox-scheduler-initial-delay}")
     public void processOutboxMessage() {
-        resetTimedOutMessages();
-        List<OrderOutboxMessage> messagesToProcess = updateMessagesToProcessing();
+        orderOutboxHelper.resetTimedOutMessages(processingTimeoutMinutes, batchSize);
+        List<OrderOutboxMessage> messagesToProcess = orderOutboxHelper.updateMessagesToProcessing(batchSize);
         
         if (!messagesToProcess.isEmpty()) {
             log.info("Processing {} OrderOutboxMessages with ids: {}",
@@ -53,23 +51,6 @@ public class OrderOutboxScheduler implements OutboxScheduler {
         }
     }
     
-    @Transactional
-    public List<OrderOutboxMessage> updateMessagesToProcessing() {
-        List<OrderOutboxMessage> outboxMessages = orderOutboxHelper
-                .getOrderOutboxMessageByOutboxStatus(OutboxStatus.STARTED, batchSize);
-        
-        if (!outboxMessages.isEmpty()) {
-            ZonedDateTime now = ZonedDateTime.now();
-            outboxMessages.forEach(message -> {
-                message.setOutboxStatus(OutboxStatus.PROCESSING);
-                message.setFetchedAt(now);
-            });
-            orderOutboxHelper.saveAll(outboxMessages);
-        }
-        
-        return outboxMessages;
-    }
-    
     private void publishMessage(OrderOutboxMessage outboxMessage) {
         ServiceMessageType messageType = ServiceMessageType.valueOf(outboxMessage.getType());
         switch (messageType) {
@@ -81,27 +62,6 @@ public class OrderOutboxScheduler implements OutboxScheduler {
                 break;
             default:
                 log.warn("Unknown outbox message type: {}", outboxMessage.getType());
-        }
-    }
-
-    
-    @Transactional
-    public void resetTimedOutMessages() {
-        ZonedDateTime timeoutThreshold = ZonedDateTime.now().minusMinutes(processingTimeoutMinutes);
-        List<OrderOutboxMessage> timedOutMessages = orderOutboxHelper
-                .getOrderOutboxMessageByOutboxStatusAndFetchedAtBefore(
-                        OutboxStatus.PROCESSING, 
-                        timeoutThreshold,
-                        batchSize);
-        
-        if (!timedOutMessages.isEmpty()) {
-            log.warn("Found {} timed out PROCESSING messages, resetting to STARTED", 
-                    timedOutMessages.size());
-            timedOutMessages.forEach(message -> {
-                message.setOutboxStatus(OutboxStatus.STARTED);
-                message.setFetchedAt(null);
-            });
-            orderOutboxHelper.saveAll(timedOutMessages);
         }
     }
 }

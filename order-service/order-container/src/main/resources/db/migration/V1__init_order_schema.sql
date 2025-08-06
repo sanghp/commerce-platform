@@ -1,14 +1,5 @@
-SET FOREIGN_KEY_CHECKS = 0;
-
-DROP TABLE IF EXISTS `order_items`;
-DROP TABLE IF EXISTS `order_address`;
-DROP TABLE IF EXISTS `orders`;
-DROP TABLE IF EXISTS `order_outbox`;
-DROP TABLE IF EXISTS `order_inbox`;
-
-SET FOREIGN_KEY_CHECKS = 1;
-
-CREATE TABLE `orders`
+-- Order Service Initial Schema
+CREATE TABLE IF NOT EXISTS `orders`
 (
     id BINARY(16) NOT NULL,
     customer_id BINARY(16) NOT NULL,
@@ -23,10 +14,11 @@ CREATE TABLE `orders`
     cancelling_at TIMESTAMP(6),
     cancelled_at TIMESTAMP(6),
 
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT `uk_orders_tracking_id` UNIQUE (tracking_id)
 );
 
-CREATE TABLE `order_items`
+CREATE TABLE IF NOT EXISTS `order_items`
 (
     id BIGINT NOT NULL,
     order_id BINARY(16) NOT NULL,
@@ -39,7 +31,17 @@ CREATE TABLE `order_items`
     CONSTRAINT `fk_order_items_orders` FOREIGN KEY (order_id) REFERENCES `orders` (id) ON DELETE CASCADE
 );
 
-CREATE TABLE `order_address`
+CREATE TABLE IF NOT EXISTS `customers`
+(
+    id         BINARY(16)   NOT NULL,
+    username   VARCHAR(50)  NOT NULL,
+    first_name VARCHAR(50)  NOT NULL,
+    last_name  VARCHAR(50)  NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT `uk_customers_username` UNIQUE (username)
+);
+
+CREATE TABLE IF NOT EXISTS `order_address`
 (
     id BINARY(16) NOT NULL,
     order_id BINARY(16) UNIQUE NOT NULL,
@@ -51,7 +53,7 @@ CREATE TABLE `order_address`
     CONSTRAINT `fk_order_address_orders` FOREIGN KEY (order_id) REFERENCES `orders` (id) ON DELETE CASCADE
 );
 
-CREATE TABLE `order_outbox`
+CREATE TABLE IF NOT EXISTS `order_outbox`
 (
     id BINARY(16) NOT NULL,
     message_id BINARY(16) NOT NULL,
@@ -72,7 +74,7 @@ CREATE TABLE `order_outbox`
 
 );
 
-CREATE TABLE `order_inbox`
+CREATE TABLE IF NOT EXISTS `order_inbox`
 (
     id            BINARY(16)   NOT NULL,
     message_id    BINARY(16)   NOT NULL,
