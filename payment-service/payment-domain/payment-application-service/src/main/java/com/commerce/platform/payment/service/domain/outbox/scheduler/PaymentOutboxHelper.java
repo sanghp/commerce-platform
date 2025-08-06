@@ -91,6 +91,41 @@ public class PaymentOutboxHelper {
         log.info("PaymentOutboxMessage {} updated with status: {}", messageId, status);
     }
     
+    @Transactional
+    public List<PaymentOutboxMessage> updateMessagesToProcessing(int batchSize) {
+        List<PaymentOutboxMessage> outboxMessages = getPaymentOutboxMessageByOutboxStatus(OutboxStatus.STARTED, batchSize);
+        
+        if (!outboxMessages.isEmpty()) {
+            ZonedDateTime now = ZonedDateTime.now();
+            outboxMessages.forEach(message -> {
+                message.setOutboxStatus(OutboxStatus.PROCESSING);
+                message.setFetchedAt(now);
+            });
+            saveAll(outboxMessages);
+        }
+        
+        return outboxMessages;
+    }
+
+    @Transactional
+    public void resetTimedOutMessages(int processingTimeoutMinutes, int batchSize) {
+        ZonedDateTime timeoutThreshold = ZonedDateTime.now().minusMinutes(processingTimeoutMinutes);
+        List<PaymentOutboxMessage> timedOutMessages = getPaymentOutboxMessageByOutboxStatusAndFetchedAtBefore(
+                OutboxStatus.PROCESSING, 
+                timeoutThreshold,
+                batchSize);
+        
+        if (!timedOutMessages.isEmpty()) {
+            log.warn("Found {} timed out PROCESSING messages, resetting to STARTED", 
+                    timedOutMessages.size());
+            timedOutMessages.forEach(message -> {
+                message.setOutboxStatus(OutboxStatus.STARTED);
+                message.setFetchedAt(null);
+            });
+            saveAll(timedOutMessages);
+        }
+    }
+
     private String createPayload(Object eventPayload) {
         try {
             return objectMapper.writeValueAsString(eventPayload);
