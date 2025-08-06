@@ -4,7 +4,6 @@
 >
 > *   **구현 완료**: `Order Service`, `Product Service`, `Payment Service`
 > *   **핵심 기능**: 주문-재고-결제 전체 플로우의 분산 트랜잭션 처리
-> *   **구현 예정**: `Customer Service` (CQRS 읽기 모델)
 
 Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼의 주문 처리 시스템입니다.
 
@@ -23,7 +22,7 @@ Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼�
 
 ### 핵심 설계
 - **DDD & Clean Architecture**: Dependency Rule에 따라 모든 종속성이 내부 계층으로 향하도록 설계했습니다. 이를 통해 외부 프레임워크나 인프라(DB, Messaging 등)의 변화로부터 핵심 비즈니스 로직을 보호하고 시스템의 유연성과 테스트 용이성을 확보합니다.
-- **CQRS**: 명령(Command)과 조회(Query)의 책임을 분리하여 시스템의 성능과 확장성을 향상시킵니다. `Order Service`에서 발생한 주문 완료 이벤트를 `Customer Service`가 구독하여 조회에 최적화된 별도의 **`주문 내역` 테이블을 유지합니다.** 이를 통해 사용자는 자신의 주문 내역을 빠르고 안정적으로 조회할 수 있으며 쓰기(Write)와 읽기(Read) 모델의 관심사를 분리하여 각 서비스의 독립성을 높입니다.
+- **SAGA Pattern**: Orchestration 방식으로 분산 트랜잭션을 관리하며, Order Service가 전체 플로우의 조정자 역할을 수행합니다.
 - **Outbox Pattern & Kafka**: 이벤트 발행시 로컬 트랜잭션으로 Outbox 테이블에 이벤트를 저장한 뒤 Kafka에 발행하여 Eventual Consistency를 구현합니다.
 - **Inbox Pattern**: 메시지 중복 처리 방지를 위해 Inbox 패턴을 구현하여 이벤트 소비의 멱등성을 보장합니다.
 
@@ -39,7 +38,7 @@ Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼�
 | **Persistence** | Spring Data JPA, MySQL | 8.0 | |
 | **Messaging** | Confluent Platform (Apache Kafka) | 7.6.1 (Kafka 3.6.1) | KRaft mode |
 | **Security** | Spring Security, JWT | | |
-| **Architecture** | MSA, Clean, DDD, Hexagonal, CQRS | | |
+| **Architecture** | MSA, Clean, DDD, Hexagonal, SAGA | | |
 | **Infrastructure** | Docker Compose | | |
 
 ---
@@ -118,34 +117,21 @@ docker compose -f infrastructure/docker-compose/docker-compose.yml up -d
 
 ## 📖 API 사용 예시
 
-### Product Service (http://localhost:8082)
+> [!NOTE]
+> **초기 데이터로 다음 상품들이 등록되어 있습니다:**
+> - `0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0`: 커피 (5,000원, 재고 1000개)
+> - `1a2b3c4d-5e6f-7089-9a0b-cdef12345678`: 샌드위치 (8,000원, 재고 500개)
+> - `2b3c4d5e-6f70-8192-a3b4-cdef56789012`: 샐러드 (12,000원, 재고 300개)
+> - `3c4d5e6f-7081-92a3-b4c5-def678901234`: 피자 (25,000원, 재고 200개)
+> - `4d5e6f70-8192-a3b4-c5d6-ef7890123456`: 파스타 (18,000원, 재고 250개)
 
-#### 1. 상품 생성
-
-- **POST** `/api/v1/products`
-
-```bash
-curl -X 'POST' \
-  'http://localhost:8182/api/v1/products' \
-  -H 'accept: */*' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "name": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "price": 5000,
-  "quantity": 15
-}'
-```
-
-성공 시 생성된 상품의 ID가 반환됩니다.
-
-### Order Service (http://localhost:8081)
+### Order Service (http://localhost:8181)
 
 #### 1. 주문 생성
 
 - **POST** `/api/v1/orders`
 
-> [!NOTE]
-> `customerId`는 임의의 UUID를 사용하고, `productId`는 위에서 생성된 상품의 ID를 입력해야 합니다.
+커피 3개를 주문하는 예시:
 
 ```bash
 curl -X 'POST' \
@@ -157,7 +143,7 @@ curl -X 'POST' \
   "price": 15000,
   "items": [
     {
-      "productId": "8baf82ad-d492-4021-a349-be517e5d181a",
+      "productId": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
       "quantity": 3,
       "price": 5000
     }
@@ -165,7 +151,37 @@ curl -X 'POST' \
   "address": {
     "street": "123 Main St",
     "postalCode": "12345",
-    "city": "Anytown"
+    "city": "Seoul"
+  }
+}'
+```
+
+피자 1개와 파스타 2개를 주문하는 예시:
+
+```bash
+curl -X 'POST' \
+  'http://localhost:8181/api/v1/orders' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "customerId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "price": 61000,
+  "items": [
+    {
+      "productId": "3c4d5e6f-7081-92a3-b4c5-def678901234",
+      "quantity": 1,
+      "price": 25000
+    },
+    {
+      "productId": "4d5e6f70-8192-a3b4-c5d6-ef7890123456",
+      "quantity": 2,
+      "price": 18000
+    }
+  ],
+  "address": {
+    "street": "456 Oak St",
+    "postalCode": "67890",
+    "city": "Busan"
   }
 }'
 ```
@@ -177,7 +193,7 @@ curl -X 'POST' \
 - **GET** `/api/v1/orders/{orderTrackingId}`
 
 ```bash
-curl -X GET http://localhost:8081/api/v1/orders/위에서-받은-orderTrackingId
+curl -X GET http://localhost:8181/api/v1/orders/위에서-받은-orderTrackingId
 ```
 
 ## 🐳 docker-compose.yml
@@ -295,7 +311,7 @@ services:
 ---
 
 ## 📌 향후 개선 계획
--   **Customer Service 구현**: CQRS 패턴의 읽기 모델로 Customer Service를 구현하여 고객별 주문 내역 조회를 최적화합니다.
+-   **고객 인증/인가 시스템**: JWT 기반 인증 시스템을 구축하여 실제 회원만 주문 가능하도록 개선
 -   **CDC(Change Data Capture) 도입**: Debezium을 활용하여 Outbox 패턴을 CDC 기반 이벤트 발행으로 전환합니다. 이를 통해 애플리케이션의 비즈니스 로직과 이벤트 발행 메커니즘을 완전히 분리하여 결합도를 낮출 수 있습니다.
 -   **모니터링 및 추적**: OpenTelemetry, Prometheus, Grafana를 활용한 분산 추적 및 모니터링 시스템 구축
 -   **테스트 커버리지 향상**: 단위 테스트, 통합 테스트, E2E 테스트 작성
