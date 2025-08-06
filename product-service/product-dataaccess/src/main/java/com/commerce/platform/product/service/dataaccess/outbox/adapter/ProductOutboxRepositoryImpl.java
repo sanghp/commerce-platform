@@ -10,6 +10,7 @@ import com.commerce.platform.outbox.OutboxStatus;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,6 +56,15 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
     public List<ProductOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit) {
         return outboxJpaRepository.findByOutboxStatus(outboxStatus, PageRequest.of(0, limit))
                 .stream()
+                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<ProductOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, ZonedDateTime fetchedAtBefore, int limit) {
+        return outboxJpaRepository.findByOutboxStatusAndFetchedAtBeforeOrderByCreatedAt(outboxStatus, fetchedAtBefore)
+                .stream()
+                .limit(limit)
                 .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
                 .collect(Collectors.toList());
     }

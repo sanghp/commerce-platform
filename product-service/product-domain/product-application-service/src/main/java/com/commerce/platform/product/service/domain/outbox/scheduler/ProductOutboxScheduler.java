@@ -9,8 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,6 +22,9 @@ public class ProductOutboxScheduler implements OutboxScheduler {
     
     @Value("${product-service.outbox-scheduler-batch-size:10}")
     private int batchSize;
+    
+    @Value("${product-service.outbox-processing-timeout-minutes:5}")
+    private int processingTimeoutMinutes;
 
     public ProductOutboxScheduler(ProductOutboxHelper outboxHelper,
                                              ProductReservationResponseMessagePublisher responseMessagePublisher) {
@@ -35,7 +36,8 @@ public class ProductOutboxScheduler implements OutboxScheduler {
     @Scheduled(fixedDelayString = "${product-service.outbox-scheduler-fixed-rate}",
             initialDelayString = "${product-service.outbox-scheduler-initial-delay}")
     public void processOutboxMessage() {
-        List<ProductOutboxMessage> messagesToProcess = updateMessagesToProcessing();
+        outboxHelper.resetTimedOutMessages(processingTimeoutMinutes, batchSize);
+        List<ProductOutboxMessage> messagesToProcess = outboxHelper.updateMessagesToProcessing(batchSize);
         
         if (!messagesToProcess.isEmpty()) {
             log.info("Processing {} ProductOutboxMessages with ids: {}",
@@ -48,18 +50,6 @@ public class ProductOutboxScheduler implements OutboxScheduler {
             
             log.info("{} ProductOutboxMessages processed", messagesToProcess.size());
         }
-    }
-    
-    @Transactional
-    public List<ProductOutboxMessage> updateMessagesToProcessing() {
-        List<ProductOutboxMessage> outboxMessages = outboxHelper
-                .getProductOutboxMessageByOutboxStatus(OutboxStatus.STARTED, batchSize);
-        
-        if (!outboxMessages.isEmpty()) {
-            outboxHelper.updateOutboxMessagesStatus(outboxMessages, OutboxStatus.PROCESSING);
-        }
-        
-        return outboxMessages;
     }
     
     private void publishMessage(ProductOutboxMessage outboxMessage) {

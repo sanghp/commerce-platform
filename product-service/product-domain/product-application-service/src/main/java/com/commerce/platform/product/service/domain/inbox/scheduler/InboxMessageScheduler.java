@@ -26,11 +26,7 @@ public class InboxMessageScheduler implements InboxScheduler {
     @Scheduled(fixedDelayString = "${product-service.inbox-scheduler-fixed-rate:100}")
     public void processInboxMessages() {
         try {
-            for (int i = 0; i < batchSize; i++) {
-                if (!inboxMessageHelper.processNextMessage()) {
-                    break;
-                }
-            }
+            inboxMessageHelper.processInboxMessages(batchSize);
         } catch (Exception e) {
             log.error("Failed to process inbox messages", e);
         }

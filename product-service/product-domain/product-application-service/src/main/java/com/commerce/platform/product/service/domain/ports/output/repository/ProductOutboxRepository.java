@@ -5,6 +5,7 @@ import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
 import com.commerce.platform.outbox.OutboxStatus;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,8 @@ public interface ProductOutboxRepository {
     void deleteByOutboxStatus(OutboxStatus outboxStatus);
 
     List<ProductOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit);
+    
+    List<ProductOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, ZonedDateTime fetchedAtBefore, int limit);
     
     Optional<ProductOutboxMessage> findById(UUID id);
 } 

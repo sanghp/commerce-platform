@@ -86,4 +86,44 @@ public class ProductOutboxHelper {
         save(message);
         log.info("ProductOutboxMessage {} updated with status: {}", messageId, status);
     }
+
+    @Transactional
+    public List<ProductOutboxMessage> updateMessagesToProcessing(int batchSize) {
+        List<ProductOutboxMessage> outboxMessages = getProductOutboxMessageByOutboxStatus(OutboxStatus.STARTED, batchSize);
+        
+        if (!outboxMessages.isEmpty()) {
+            ZonedDateTime now = ZonedDateTime.now();
+            outboxMessages.forEach(message -> {
+                message.setOutboxStatus(OutboxStatus.PROCESSING);
+                message.setFetchedAt(now);
+            });
+            outboxRepository.saveAll(outboxMessages);
+        }
+        
+        return outboxMessages;
+    }
+
+    @Transactional
+    public void resetTimedOutMessages(int processingTimeoutMinutes, int batchSize) {
+        ZonedDateTime timeoutThreshold = ZonedDateTime.now().minusMinutes(processingTimeoutMinutes);
+        List<ProductOutboxMessage> timedOutMessages = getProductOutboxMessageByOutboxStatusAndFetchedAtBefore(
+                OutboxStatus.PROCESSING,
+                timeoutThreshold,
+                batchSize);
+        if (!timedOutMessages.isEmpty()) {
+            log.warn("Found {} timed out PROCESSING messages, resetting to STARTED",
+                    timedOutMessages.size());
+            timedOutMessages.forEach(message -> {
+                message.setOutboxStatus(OutboxStatus.STARTED);
+                message.setFetchedAt(null);
+            });
+            outboxRepository.saveAll(timedOutMessages);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductOutboxMessage> getProductOutboxMessageByOutboxStatusAndFetchedAtBefore(
+            OutboxStatus outboxStatus, ZonedDateTime fetchedAtBefore, int limit) {
+        return outboxRepository.findByOutboxStatusAndFetchedAtBefore(outboxStatus, fetchedAtBefore, limit);
+    }
 }
