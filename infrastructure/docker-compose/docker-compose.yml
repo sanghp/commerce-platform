@@ -18,8 +18,13 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       TZ: UTC
+    command: --max_connections=500
     ports:
       - "13306:3306"
+    volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql
+    networks:
+      - commerce-platform
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
@@ -34,6 +39,8 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka1:29092,kafka2:29092,kafka3:29092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks:
+      - commerce-platform
 
   kafka1:
     image: confluentinc/cp-kafka:7.6.1
@@ -45,6 +52,8 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,CONTROLLER://kafka1:9093,EXTERNAL://0.0.0.0:9092'
       KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka1:29092,EXTERNAL://localhost:19092'
+    networks:
+      - commerce-platform
 
   kafka2:
     image: confluentinc/cp-kafka:7.6.1
@@ -56,6 +65,8 @@ services:
       KAFKA_NODE_ID: 2
       KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,CONTROLLER://kafka2:9093,EXTERNAL://0.0.0.0:9092'
       KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka2:29092,EXTERNAL://localhost:19093'
+    networks:
+      - commerce-platform
 
   kafka3:
     image: confluentinc/cp-kafka:7.6.1
@@ -67,6 +78,8 @@ services:
       KAFKA_NODE_ID: 3
       KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,CONTROLLER://kafka3:9093,EXTERNAL://0.0.0.0:9092'
       KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka3:29092,EXTERNAL://localhost:19094'
+    networks:
+      - commerce-platform
 
 
   kafka-ui:
@@ -83,6 +96,8 @@ services:
       - kafka2
       - kafka3
       - schema-registry
+    networks:
+      - commerce-platform
 
   init-kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -90,6 +105,8 @@ services:
       - kafka1
       - kafka2
       - kafka3
+    networks:
+      - commerce-platform
     entrypoint: [ '/bin/sh', '-c' ]
     command: |
       "
@@ -100,8 +117,12 @@ services:
       kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 30 --replication-factor 3
       kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 30 --replication-factor 3
       kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic customer --partitions 30 --replication-factor 3
 
       echo 'Topics created:'
       kafka-topics --bootstrap-server kafka1:29092 --list
-      " 
+      "
+
+networks:
+  commerce-platform:
+    name: commerce-platform
+    driver: bridge 

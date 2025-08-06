@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  flyway-order:
+    image: flyway/flyway:10-alpine
+    command: 
+      - migrate
+      - -url=jdbc:mysql://mysql:3306/order?allowPublicKeyRetrieval=true&useSSL=false
+      - -user=root
+      - -password=root
+      - -connectRetries=60
+      - -locations=filesystem:/flyway/sql
+    volumes:
+      - ../../order-service/order-container/src/main/resources/db/migration:/flyway/sql
+    networks:
+      - commerce-platform
+    external_links:
+      - docker-compose-mysql-1:mysql
+
+  flyway-product:
+    image: flyway/flyway:10-alpine
+    command: 
+      - migrate
+      - -url=jdbc:mysql://mysql:3306/product?allowPublicKeyRetrieval=true&useSSL=false
+      - -user=root
+      - -password=root
+      - -connectRetries=60
+      - -locations=filesystem:/flyway/sql
+    volumes:
+      - ../../product-service/product-container/src/main/resources/db/migration:/flyway/sql
+    networks:
+      - commerce-platform
+    external_links:
+      - docker-compose-mysql-1:mysql
+
+  flyway-payment:
+    image: flyway/flyway:10-alpine
+    command: 
+      - migrate
+      - -url=jdbc:mysql://mysql:3306/payment?allowPublicKeyRetrieval=true&useSSL=false
+      - -user=root
+      - -password=root
+      - -connectRetries=60
+      - -locations=filesystem:/flyway/sql
+    volumes:
+      - ../../payment-service/payment-container/src/main/resources/db/migration:/flyway/sql
+    networks:
+      - commerce-platform
+    external_links:
+      - docker-compose-mysql-1:mysql
+
+networks:
+  commerce-platform:
+    name: commerce-platform
+    external: true
