@@ -2,13 +2,21 @@ package com.commerce.platform.product.service.dataaccess.outbox.adapter;
 
 import com.commerce.platform.domain.event.ServiceMessageType;
 
+import com.commerce.platform.product.service.dataaccess.outbox.entity.ProductOutboxEntity;
 import com.commerce.platform.product.service.dataaccess.outbox.mapper.ProductOutboxDataAccessMapper;
 import com.commerce.platform.product.service.dataaccess.outbox.repository.ProductOutboxJpaRepository;
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductOutboxRepository;
 import com.commerce.platform.outbox.OutboxStatus;
-import org.springframework.data.domain.PageRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -17,16 +25,14 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
 
     private final ProductOutboxJpaRepository outboxJpaRepository;
     private final ProductOutboxDataAccessMapper outboxDataAccessMapper;
-
-    public ProductOutboxRepositoryImpl(ProductOutboxJpaRepository outboxJpaRepository,
-                                                  ProductOutboxDataAccessMapper outboxDataAccessMapper) {
-        this.outboxJpaRepository = outboxJpaRepository;
-        this.outboxDataAccessMapper = outboxDataAccessMapper;
-    }
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Override
     public ProductOutboxMessage save(ProductOutboxMessage outboxMessage) {
@@ -54,7 +60,15 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
 
     @Override
     public List<ProductOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit) {
-        return outboxJpaRepository.findByOutboxStatus(outboxStatus, PageRequest.of(0, limit))
+        return outboxJpaRepository.findByOutboxStatus(outboxStatus, org.springframework.data.domain.PageRequest.of(0, limit))
+                .stream()
+                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<ProductOutboxMessage> findByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit) {
+        return outboxJpaRepository.findByOutboxStatusWithSkipLock(outboxStatus.name(), limit)
                 .stream()
                 .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
                 .collect(Collectors.toList());
@@ -73,5 +87,35 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
     public Optional<ProductOutboxMessage> findById(UUID id) {
         return outboxJpaRepository.findById(id)
                 .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage);
+    }
+    
+    @Override
+    @Transactional
+    public int bulkUpdateStatusAndFetchedAt(List<UUID> ids, OutboxStatus status, ZonedDateTime fetchedAt) {
+        if (ids.isEmpty()) {
+            return 0;
+        }
+        
+        String sql = "UPDATE product_outbox SET outbox_status = ?, fetched_at = ? WHERE id = UNHEX(REPLACE(?, '-', ''))";
+        
+        int[] updateCounts = jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setString(1, status.name());
+                if (fetchedAt != null) {
+                    ps.setTimestamp(2, java.sql.Timestamp.from(fetchedAt.toInstant()));
+                } else {
+                    ps.setNull(2, java.sql.Types.TIMESTAMP);
+                }
+                ps.setString(3, ids.get(i).toString());
+            }
+            
+            @Override
+            public int getBatchSize() {
+                return ids.size();
+            }
+        });
+        
+        return java.util.Arrays.stream(updateCounts).sum();
     }
 } 

@@ -35,9 +35,6 @@ public class ProductCustomRepositoryImpl implements ProductCustomRepository {
                 .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                 .fetch();
 
-        log.debug("Found {} products with FOR UPDATE lock for {} requested product IDs", 
-                products.size(), productIds.size());
-
         return products;
     }
 } 

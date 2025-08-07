@@ -7,6 +7,7 @@ import com.commerce.platform.outbox.OutboxScheduler;
 import com.commerce.platform.outbox.OutboxStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import java.time.ZonedDateTime;
@@ -33,8 +34,9 @@ public class ProductOutboxScheduler implements OutboxScheduler {
     }
 
     @Override
-    @Scheduled(fixedDelayString = "${product-service.outbox-scheduler-fixed-rate}",
+    @Scheduled(fixedRateString = "${product-service.outbox-scheduler-fixed-rate}",
             initialDelayString = "${product-service.outbox-scheduler-initial-delay}")
+    @Async("outboxTaskExecutor")
     public void processOutboxMessage() {
         outboxHelper.resetTimedOutMessages(processingTimeoutMinutes, batchSize);
         List<ProductOutboxMessage> messagesToProcess = outboxHelper.updateMessagesToProcessing(batchSize);
