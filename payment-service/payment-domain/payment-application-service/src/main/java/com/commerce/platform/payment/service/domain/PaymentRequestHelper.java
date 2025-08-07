@@ -81,18 +81,6 @@ public class PaymentRequestHelper {
         return paymentEvent;
     }
     
-    private Credit getCredit(CustomerId customerId) {
-        Optional<Credit> credit = creditRepository.findByCustomerId(customerId);
-        
-        if (credit.isEmpty()) {
-            log.error("Credit with customer id: {} not found", customerId.getValue());
-            throw new PaymentDomainException("Credit with customer id: " + 
-                    customerId.getValue() + " not found");
-        }
-        
-        return credit.get();
-    }
-    
     private Credit getCreditForUpdate(CustomerId customerId) {
         Optional<Credit> credit = creditRepository.findByCustomerIdForUpdate(customerId);
         

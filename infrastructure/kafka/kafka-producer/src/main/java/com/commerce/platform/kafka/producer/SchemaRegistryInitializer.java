@@ -21,7 +21,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-@Order(1) // 애플리케이션 시작 시 가장 먼저 실행
+@Order(1)
 public class SchemaRegistryInitializer implements CommandLineRunner {
 
     private final KafkaConfigData kafkaConfigData;

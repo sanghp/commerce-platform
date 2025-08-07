@@ -6,7 +6,6 @@ import com.commerce.platform.order.service.domain.dto.message.ProductReservation
 import com.commerce.platform.order.service.domain.outbox.model.payment.OrderPaymentEventPayload;
 import com.commerce.platform.order.service.domain.outbox.model.product.ProductReservationEventPayload;
 import org.springframework.stereotype.Component;
-import com.commerce.platform.domain.util.UuidGenerator;
 
 import java.util.UUID;
 import java.util.stream.Collectors;

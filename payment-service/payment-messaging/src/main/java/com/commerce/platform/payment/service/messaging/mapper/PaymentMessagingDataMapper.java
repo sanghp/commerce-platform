@@ -1,6 +1,5 @@
 package com.commerce.platform.payment.service.messaging.mapper;
 
-import com.commerce.platform.domain.util.UuidGenerator;
 import com.commerce.platform.kafka.order.avro.model.PaymentRequestAvroModel;
 import com.commerce.platform.kafka.order.avro.model.PaymentResponseAvroModel;
 import com.commerce.platform.kafka.order.avro.model.PaymentStatus;
