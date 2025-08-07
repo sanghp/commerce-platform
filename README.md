@@ -37,7 +37,7 @@ Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼�
 | **Build Tool** | Maven | 3.9.10 | Multi-module |
 | **Persistence** | Spring Data JPA, MySQL | 8.0 | |
 | **Messaging** | Confluent Platform (Apache Kafka) | 7.6.1 (Kafka 3.6.1) | KRaft mode |
-| **Security** | Spring Security, JWT | | |
+| **Security** | Spring Security | | JWT 기반 인증 도입 예정 |
 | **Architecture** | MSA, Clean, DDD, Hexagonal, SAGA | | |
 | **Infrastructure** | Docker Compose | | |
 
@@ -72,35 +72,51 @@ Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼�
 
 ---
 
-## ⚙️ 실행 방법
+## 🚀 로컬 환경 통합 빌드 및 실행
 
-모든 명령어는 **프로젝트 루트 디렉터리**를 기준으로 실행합니다.
+로컬 환경에서 모든 서비스를 한 번에 빌드하고 실행 및 테스트할 수 있는 통합 스크립트를 제공합니다.
 
-### 1. 애플리케이션 빌드
+### 통합 빌드 및 실행 (`build-and-run.sh`)
 
-먼저 프로젝트 루트 디렉터리에서 다음 명령어를 실행하여 모든 서비스 모듈을 빌드합니다.
-
-```bash
-./mvnw clean install
-```
-
-### 2. 인프라 실행 (Kafka, MySQL)
-
-다음 명령어로 모든 인프라 서비스(MySQL, Kafka, Schema Registry)를 백그라운드에서 실행합니다.
+아래 스크립트는 Maven 프로젝트 빌드, 컨테이너 이미지 생성, 인프라 및 애플리케이션 서비스 실행, 데이터베이스 마이그레이션까지 전 과정을 자동화합니다.
 
 ```bash
-docker compose -f infrastructure/docker-compose/docker-compose.yml up -d
+./scripts/build-and-run.sh
 ```
 
-### 3. 서비스 실행
+#### 실행 프로세스 상세
 
-각 마이크로서비스는 개별적으로 실행해야 합니다. **각 서비스마다 새 터미널을 열고** 아래 명령어를 실행하세요.
+스크립트는 다음의 프로세스를 순차적으로 실행합니다.
 
-| 서비스             | 실행 명령어                                                                                       |
-| ------------------ |----------------------------------------------------------------------------------------------|
-| **Order Service**  | `java -jar order-service/order-container/target/order-container-0.0.1-SNAPSHOT.jar`          |
-| **Product Service**| `java -jar product-service/product-container/target/product-container-0.0.1-SNAPSHOT.jar`    |
-| **Payment Service**| `java -jar payment-service/payment-container/target/payment-container-0.0.1-SNAPSHOT.jar`    |
+1.  **빌드 & 이미지 생성**: `mvn clean install`를 실행하여 각 서비스를 컨테이너 이미지로 빌드합니다.
+2.  **인프라 프로비저닝**: `docker-compose.yml`을 실행하여 `MySQL`, `Kafka`, `Schema Registry` 등 인프라 컨테이너를 실행합니다.
+3.  **데이터베이스 마이그레이션**: `docker-compose-flyway.yml`을 통해 `Flyway`를 실행하여 각 서비스의 데이터베이스 스키마와 초기 데이터를 적용합니다.
+4.  **서비스 오케스트레이션**: `docker-compose-services.yml`을 실행하여 모든 마이크로서비스(`Order`, `Product`, `Payment`) 컨테이너를 실행하고 서비스 간 네트워크를 구성합니다.
+5.  **로드 밸런싱**: `HAProxy`가 각 서비스의 로드 밸런서 역할을 수행하며 외부 요청을 라우팅합니다. (`Order`:8080, `Product`:8090, `Payment`:8100)
+
+
+### 분산 트랜잭션 부하 테스트 (`load_test.sh`)
+
+Saga 패턴으로 구현된 분산 트랜잭션의 안정성과 성능을 검증하기 위한 부하 테스트 스크립트를 제공합니다.
+
+```bash
+./scripts/load_test.sh
+```
+#### 테스트 시나리오
+
+*   **동시성 레벨**: 100개의 병렬 HTTP 요청을 통해 동시 주문 생성
+*   **트랜잭션 유형**: **주문 생성 → 재고 예약 → 결제 처리**로 이어지는 전체 Saga 플로우
+*   **주요 검증 항목**:
+    *   **데이터 정합성**: Outbox/Inbox 패턴을 통한 메시지 멱등성 보장 및 중복 처리 방지
+    *   **동시성 제어**: 다중 요청 환경에서 재고 및 잔액 데이터의 정확성 유지
+    *   **보상 트랜잭션**: 재고 부족, 결제 실패 등 예외 상황 발생 시 보상 트랜잭션의 정상 동작 여부
+
+#### 모니터링
+
+테스트 실행 중 아래 엔드포인트를 통해 시스템 상태를 실시간으로 모니터링할 수 있습니다.
+
+*   **Kafka UI**: `http://localhost:28080` - Kafka 토픽, 메시지 흐름 확인
+*   **HAProxy Stats**: `http://localhost:9000/stats` - 서비스별 요청 분산 및 상태 확인
 
 ---
 
@@ -196,117 +212,7 @@ curl -X 'POST' \
 curl -X GET http://localhost:8181/api/v1/orders/위에서-받은-orderTrackingId
 ```
 
-## 🐳 docker-compose.yml
 
-```yaml
-version: '3.8'
-
-x-kafka-common-env: &kafka-common-env
-  KAFKA_PROCESS_ROLES: 'broker,controller'
-  KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT'
-  KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
-  KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
-  CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
-  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
-  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
-  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
-  KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-
-services:
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      TZ: UTC
-    ports:
-      - "13306:3306"
-
-  schema-registry:
-    image: confluentinc/cp-schema-registry:7.6.1
-    hostname: schema-registry
-    depends_on:
-      - kafka1
-      - kafka2
-      - kafka3
-    ports:
-      - "18081:8081"
-    environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka1:29092,kafka2:29092,kafka3:29092'
-      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-
-  kafka1:
-    image: confluentinc/cp-kafka:7.6.1
-    hostname: kafka1
-    ports:
-      - "19092:9092"
-    environment:
-      <<: *kafka-common-env
-      KAFKA_NODE_ID: 1
-      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,CONTROLLER://kafka1:9093,EXTERNAL://0.0.0.0:9092'
-      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka1:29092,EXTERNAL://localhost:19092'
-
-  kafka2:
-    image: confluentinc/cp-kafka:7.6.1
-    hostname: kafka2
-    ports:
-      - "19093:9092"
-    environment:
-      <<: *kafka-common-env
-      KAFKA_NODE_ID: 2
-      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,CONTROLLER://kafka2:9093,EXTERNAL://0.0.0.0:9092'
-      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka2:29092,EXTERNAL://localhost:19093'
-
-  kafka3:
-    image: confluentinc/cp-kafka:7.6.1
-    hostname: kafka3
-    ports:
-      - "19094:9092"
-    environment:
-      <<: *kafka-common-env
-      KAFKA_NODE_ID: 3
-      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,CONTROLLER://kafka3:9093,EXTERNAL://0.0.0.0:9092'
-      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka3:29092,EXTERNAL://localhost:19094'
-
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    ports:
-      - "28080:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092,kafka2:29092,kafka3:29092
-      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
-    depends_on:
-      - kafka1
-      - kafka2
-      - kafka3
-      - schema-registry
-
-  init-kafka:
-    image: confluentinc/cp-kafka:7.6.1
-    depends_on:
-      - kafka1
-      - kafka2
-      - kafka3
-    entrypoint: [ '/bin/sh', '-c' ]
-    command: |
-      "
-      echo 'Waiting for Kafka to be ready...'
-      kafka-topics --bootstrap-server kafka1:29092 --list
-
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-request --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic customer --partitions 30 --replication-factor 3
-
-      echo 'Topics created:'
-      kafka-topics --bootstrap-server kafka1:29092 --list
-      " 
-```
 
 ---
 
