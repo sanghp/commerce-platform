@@ -1,13 +1,14 @@
 version: '3.8'
 
 services:
-  # Order Service - 3 instances
+  # Order Service - 2 instances
   order-service-1:
     image: com.commerce.platform/order.service:0.0.1-SNAPSHOT
     container_name: order-service-1
     ports:
       - "8181:8181"
     environment:
+      JAVA_OPTS: "-Xms1g -Xmx1g"
       SERVER_PORT: 8181
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -28,6 +29,7 @@ services:
     ports:
       - "8281:8181"
     environment:
+      JAVA_OPTS: "-Xms1g -Xmx1g"
       SERVER_PORT: 8181
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -42,33 +44,14 @@ services:
     networks:
       - commerce-platform
 
-  order-service-3:
-    image: com.commerce.platform/order.service:0.0.1-SNAPSHOT
-    container_name: order-service-3
-    ports:
-      - "8381:8181"
-    environment:
-      SERVER_PORT: 8181
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
-      SPRING_KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      KAFKA_CONFIG_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
-      KAFKA_CONFIG_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      SPRING_APPLICATION_JSON: '{"product-service":{"url":"http://haproxy:8090"}}'
-      EUREKA_INSTANCE_INSTANCE_ID: order-service-3
-    networks:
-      - commerce-platform
-
-  # Product Service - 3 instances
+  # Product Service - 2 instances
   product-service-1:
     image: com.commerce.platform/product.service:0.0.1-SNAPSHOT
     container_name: product-service-1
     ports:
       - "8182:8182"
     environment:
+      JAVA_OPTS: "-Xms1g -Xmx1g"
       SERVER_PORT: 8182
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/product?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -88,6 +71,7 @@ services:
     ports:
       - "8282:8182"
     environment:
+      JAVA_OPTS: "-Xms1g -Xmx1g"
       SERVER_PORT: 8182
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/product?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -101,32 +85,14 @@ services:
     networks:
       - commerce-platform
 
-  product-service-3:
-    image: com.commerce.platform/product.service:0.0.1-SNAPSHOT
-    container_name: product-service-3
-    ports:
-      - "8382:8182"
-    environment:
-      SERVER_PORT: 8182
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/product?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
-      SPRING_KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      KAFKA_CONFIG_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
-      KAFKA_CONFIG_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      EUREKA_INSTANCE_INSTANCE_ID: product-service-3
-    networks:
-      - commerce-platform
-
-  # Payment Service - 3 instances
+  # Payment Service - 2 instances
   payment-service-1:
     image: com.commerce.platform/payment.service:0.0.1-SNAPSHOT
     container_name: payment-service-1
     ports:
       - "8183:8183"
     environment:
+      JAVA_OPTS: "-Xms1g -Xmx1g"
       SERVER_PORT: 8183
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/payment?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -146,6 +112,7 @@ services:
     ports:
       - "8283:8183"
     environment:
+      JAVA_OPTS: "-Xms1g -Xmx1g"
       SERVER_PORT: 8183
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/payment?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -156,25 +123,6 @@ services:
       KAFKA_CONFIG_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
       KAFKA_CONFIG_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       EUREKA_INSTANCE_INSTANCE_ID: payment-service-2
-    networks:
-      - commerce-platform
-
-  payment-service-3:
-    image: com.commerce.platform/payment.service:0.0.1-SNAPSHOT
-    container_name: payment-service-3
-    ports:
-      - "8383:8183"
-    environment:
-      SERVER_PORT: 8183
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/payment?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
-      SPRING_KAFKA_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      KAFKA_CONFIG_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
-      KAFKA_CONFIG_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      EUREKA_INSTANCE_INSTANCE_ID: payment-service-3
     networks:
       - commerce-platform
 

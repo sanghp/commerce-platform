@@ -15,6 +15,7 @@ x-kafka-common-env: &kafka-common-env
 services:
   mysql:
     image: mysql:8.0
+    platform: linux/arm64/v8
     environment:
       MYSQL_ROOT_PASSWORD: root
       TZ: UTC
