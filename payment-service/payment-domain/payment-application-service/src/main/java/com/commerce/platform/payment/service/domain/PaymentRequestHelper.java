@@ -43,7 +43,7 @@ public class PaymentRequestHelper {
     public PaymentEvent persistPayment(PaymentRequest paymentRequest) {
         log.info("Received payment request with payment id: {}", paymentRequest.getId());
         Payment payment = paymentDataMapper.paymentRequestToPayment(paymentRequest);
-        Credit credit = getCredit(payment.getCustomerId());
+        Credit credit = getCreditForUpdate(payment.getCustomerId());
         List<String> failureMessages = new ArrayList<>();
         
         PaymentEvent paymentEvent = paymentDomainService.initiatePayment(payment, credit, failureMessages);
@@ -70,7 +70,7 @@ public class PaymentRequestHelper {
         }
         
         Payment payment = paymentResponse.get();
-        Credit credit = getCredit(payment.getCustomerId());
+        Credit credit = getCreditForUpdate(payment.getCustomerId());
         
         List<String> failureMessages = new ArrayList<>();
         PaymentEvent paymentEvent = paymentDomainService.cancelPayment(payment, credit, failureMessages);
@@ -83,6 +83,18 @@ public class PaymentRequestHelper {
     
     private Credit getCredit(CustomerId customerId) {
         Optional<Credit> credit = creditRepository.findByCustomerId(customerId);
+        
+        if (credit.isEmpty()) {
+            log.error("Credit with customer id: {} not found", customerId.getValue());
+            throw new PaymentDomainException("Credit with customer id: " + 
+                    customerId.getValue() + " not found");
+        }
+        
+        return credit.get();
+    }
+    
+    private Credit getCreditForUpdate(CustomerId customerId) {
+        Optional<Credit> credit = creditRepository.findByCustomerIdForUpdate(customerId);
         
         if (credit.isEmpty()) {
             log.error("Credit with customer id: {} not found", customerId.getValue());

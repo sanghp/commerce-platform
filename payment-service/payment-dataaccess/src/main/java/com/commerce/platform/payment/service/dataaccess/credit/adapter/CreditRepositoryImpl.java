@@ -32,4 +32,10 @@ public class CreditRepositoryImpl implements CreditRepository {
         return creditJpaRepository.findByCustomerId(customerId.getValue())
                 .map(creditDataAccessMapper::creditEntityToCredit);
     }
+    
+    @Override
+    public Optional<Credit> findByCustomerIdForUpdate(CustomerId customerId) {
+        return creditJpaRepository.findByCustomerIdForUpdate(customerId.getValue())
+                .map(creditDataAccessMapper::creditEntityToCredit);
+    }
 }

@@ -64,8 +64,8 @@ spring:
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
+      maximum-pool-size: 20
+      minimum-idle: 10
       connection-test-query: SELECT 1
       pool-name: PaymentServiceHikariPool
   flyway:
@@ -82,12 +82,15 @@ kafka-config:
 kafka-producer-config:
   key-serializer-class: org.apache.kafka.common.serialization.UUIDSerializer
   value-serializer-class: io.confluent.kafka.serializers.KafkaAvroSerializer
-  acks: all
+  acks: 1
   batch-size: 16384
   linger-ms: 5
   compression-type: none
   request-timeout-ms: 60000
   retry-count: 5
+  metadata-max-age-ms: 300000
+  schema-registry-cache-size: 100
+  auto-register-schemas: false
 
 kafka-consumer-config:
   key-deserializer: org.apache.kafka.common.serialization.StringDeserializer

@@ -10,4 +10,6 @@ public interface CreditRepository {
     Credit save(Credit credit);
     
     Optional<Credit> findByCustomerId(CustomerId customerId);
+    
+    Optional<Credit> findByCustomerIdForUpdate(CustomerId customerId);
 }
