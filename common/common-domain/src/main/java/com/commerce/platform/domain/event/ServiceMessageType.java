@@ -13,8 +13,4 @@ public enum ServiceMessageType {
     // Payment Service Messages
     PAYMENT_REQUEST,
     PAYMENT_RESPONSE;
-    
-    // Customer Service Messages (추후 추가 예정)
-    // CUSTOMER_VALIDATION_REQUEST, CUSTOMER_VALIDATION_RESPONSE
-
 }
