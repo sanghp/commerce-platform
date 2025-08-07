@@ -3,6 +3,7 @@ package com.commerce.platform.order.service.domain.inbox.scheduler;
 import com.commerce.platform.inbox.InboxScheduler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +24,8 @@ public class InboxMessageScheduler implements InboxScheduler {
     }
     
     @Override
-    @Scheduled(fixedDelayString = "${order-service.inbox-scheduler-fixed-rate:100}")
+    @Scheduled(fixedRateString = "${order-service.inbox-scheduler-fixed-rate:100}")
+    @Async("inboxTaskExecutor")
     public void processInboxMessages() {
         try {
             inboxMessageHelper.processInboxMessages(batchSize);
@@ -32,7 +34,8 @@ public class InboxMessageScheduler implements InboxScheduler {
         }
     }
     
-    @Scheduled(fixedDelayString = "${order-service.inbox-retry-scheduler-fixed-rate:3000}")
+    @Scheduled(fixedRateString = "${order-service.inbox-retry-scheduler-fixed-rate:3000}")
+    @Async("inboxTaskExecutor")
     public void retryFailedMessages() {
         try {
             inboxMessageHelper.retryFailedMessages(maxRetryCount, batchSize);

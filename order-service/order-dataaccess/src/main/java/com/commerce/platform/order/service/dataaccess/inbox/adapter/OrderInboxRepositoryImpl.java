@@ -6,19 +6,28 @@ import com.commerce.platform.order.service.dataaccess.inbox.repository.OrderInbo
 import com.commerce.platform.inbox.InboxStatus;
 import com.commerce.platform.order.service.domain.inbox.model.OrderInboxMessage;
 import com.commerce.platform.order.service.domain.ports.output.repository.OrderInboxRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+
+import java.sql.Timestamp;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 public class OrderInboxRepositoryImpl implements OrderInboxRepository {
 
     private final OrderInboxJpaRepository orderInboxJpaRepository;
     private final OrderInboxDataAccessMapper orderInboxDataAccessMapper;
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     public OrderInboxRepositoryImpl(OrderInboxJpaRepository orderInboxJpaRepository,
                                     OrderInboxDataAccessMapper orderInboxDataAccessMapper) {
@@ -37,13 +46,31 @@ public class OrderInboxRepositoryImpl implements OrderInboxRepository {
     
     @Override
     public List<OrderInboxMessage> saveAll(List<OrderInboxMessage> orderInboxMessages) {
-        return orderInboxJpaRepository.saveAll(
-                orderInboxMessages.stream()
-                        .map(orderInboxDataAccessMapper::orderInboxMessageToOrderInboxEntity)
-                        .collect(Collectors.toList())
-        ).stream()
-                .map(orderInboxDataAccessMapper::orderInboxEntityToOrderInboxMessage)
-                .collect(Collectors.toList());
+        if (orderInboxMessages.isEmpty()) {
+            return orderInboxMessages;
+        }
+        
+        String sql = "INSERT IGNORE INTO order_inbox (id, message_id, saga_id, type, payload, status, received_at, retry_count) " +
+                     "VALUES (UNHEX(REPLACE(?, '-', '')), UNHEX(REPLACE(?, '-', '')), UNHEX(REPLACE(?, '-', '')), ?, ?, ?, ?, ?)";
+        
+        int insertedCount = 0;
+        for (OrderInboxMessage message : orderInboxMessages) {
+            int result = jdbcTemplate.update(sql,
+                message.getId().toString(),
+                message.getMessageId().toString(),
+                message.getSagaId().toString(),
+                message.getType().name(),
+                message.getPayload(),
+                message.getStatus().name(),
+                Timestamp.from(message.getReceivedAt().toInstant()),
+                message.getRetryCount()
+            );
+            insertedCount += result;
+        }
+        
+        log.info("Inserted {} new messages out of {} total messages to inbox", insertedCount, orderInboxMessages.size());
+        
+        return orderInboxMessages;
     }
 
     @Override
