@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS `payment_outbox`
     PRIMARY KEY (id),
     CONSTRAINT `uk_payment_outbox_message_id` UNIQUE (message_id),
     INDEX `idx_payment_outbox_saga_id` (saga_id),
-    INDEX `idx_payment_outbox_fetch` (outbox_status, fetched_at)
+    INDEX `idx_payment_outbox_fetch` (outbox_status, fetched_at),
+    INDEX `idx_payment_outbox_created_at` (outbox_status, created_at)
 );
 
 CREATE TABLE IF NOT EXISTS `payment_inbox`

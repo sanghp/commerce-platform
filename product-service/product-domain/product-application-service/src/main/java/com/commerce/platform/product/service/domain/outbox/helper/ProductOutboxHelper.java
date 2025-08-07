@@ -35,6 +35,11 @@ public class ProductOutboxHelper {
     public List<ProductOutboxMessage> getProductOutboxMessageByOutboxStatus(OutboxStatus outboxStatus, int limit) {
         return outboxRepository.findByOutboxStatus(outboxStatus, limit);
     }
+    
+    @Transactional(readOnly = true)
+    public List<ProductOutboxMessage> getProductOutboxMessageByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit) {
+        return outboxRepository.findByOutboxStatusWithSkipLock(outboxStatus, limit);
+    }
 
     @Transactional
     public void save(ProductOutboxMessage outboxMessage) {
@@ -89,15 +94,21 @@ public class ProductOutboxHelper {
 
     @Transactional
     public List<ProductOutboxMessage> updateMessagesToProcessing(int batchSize) {
-        List<ProductOutboxMessage> outboxMessages = getProductOutboxMessageByOutboxStatus(OutboxStatus.STARTED, batchSize);
+        List<ProductOutboxMessage> outboxMessages = getProductOutboxMessageByOutboxStatusWithSkipLock(OutboxStatus.STARTED, batchSize);
         
         if (!outboxMessages.isEmpty()) {
             ZonedDateTime now = ZonedDateTime.now();
+            List<UUID> ids = outboxMessages.stream()
+                    .map(ProductOutboxMessage::getId)
+                    .toList();
+            
+            int updatedCount = outboxRepository.bulkUpdateStatusAndFetchedAt(ids, OutboxStatus.PROCESSING, now);
+            log.info("Updated {} messages to PROCESSING status", updatedCount);
+            
             outboxMessages.forEach(message -> {
                 message.setOutboxStatus(OutboxStatus.PROCESSING);
                 message.setFetchedAt(now);
             });
-            outboxRepository.saveAll(outboxMessages);
         }
         
         return outboxMessages;
@@ -113,11 +124,18 @@ public class ProductOutboxHelper {
         if (!timedOutMessages.isEmpty()) {
             log.warn("Found {} timed out PROCESSING messages, resetting to STARTED",
                     timedOutMessages.size());
+            
+            List<UUID> ids = timedOutMessages.stream()
+                    .map(ProductOutboxMessage::getId)
+                    .toList();
+            
+            int updatedCount = outboxRepository.bulkUpdateStatusAndFetchedAt(ids, OutboxStatus.STARTED, null);
+            log.info("Reset {} messages to STARTED status", updatedCount);
+            
             timedOutMessages.forEach(message -> {
                 message.setOutboxStatus(OutboxStatus.STARTED);
                 message.setFetchedAt(null);
             });
-            outboxRepository.saveAll(timedOutMessages);
         }
     }
 

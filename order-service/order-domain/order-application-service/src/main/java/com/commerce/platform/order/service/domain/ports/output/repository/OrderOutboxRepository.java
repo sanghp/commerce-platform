@@ -13,8 +13,10 @@ public interface OrderOutboxRepository {
     OrderOutboxMessage save(OrderOutboxMessage orderOutboxMessage);
     
     List<OrderOutboxMessage> saveAll(List<OrderOutboxMessage> orderOutboxMessages);
-
+    
     List<OrderOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit);
+
+    List<OrderOutboxMessage> findByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit);
     
     List<OrderOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, 
                                                                   ZonedDateTime fetchedAtBefore, 
@@ -23,4 +25,6 @@ public interface OrderOutboxRepository {
     int deleteByOutboxStatus(OutboxStatus outboxStatus, int limit);
     
     Optional<OrderOutboxMessage> findById(UUID id);
+    
+    int bulkUpdateStatusAndFetchedAt(List<UUID> ids, OutboxStatus status, ZonedDateTime fetchedAt);
 }

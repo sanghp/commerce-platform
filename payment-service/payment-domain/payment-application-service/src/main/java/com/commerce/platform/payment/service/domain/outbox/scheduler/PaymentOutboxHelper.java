@@ -17,6 +17,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -29,6 +30,11 @@ public class PaymentOutboxHelper {
     @Transactional(readOnly = true)
     public List<PaymentOutboxMessage> getPaymentOutboxMessageByOutboxStatus(OutboxStatus outboxStatus, int limit) {
         return paymentOutboxRepository.findByOutboxStatus(outboxStatus, limit);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<PaymentOutboxMessage> getPaymentOutboxMessageByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit) {
+        return paymentOutboxRepository.findByOutboxStatusWithSkipLock(outboxStatus, limit);
     }
     
     @Transactional(readOnly = true)
@@ -93,15 +99,21 @@ public class PaymentOutboxHelper {
     
     @Transactional
     public List<PaymentOutboxMessage> updateMessagesToProcessing(int batchSize) {
-        List<PaymentOutboxMessage> outboxMessages = getPaymentOutboxMessageByOutboxStatus(OutboxStatus.STARTED, batchSize);
+        List<PaymentOutboxMessage> outboxMessages = getPaymentOutboxMessageByOutboxStatusWithSkipLock(OutboxStatus.STARTED, batchSize);
         
         if (!outboxMessages.isEmpty()) {
             ZonedDateTime now = ZonedDateTime.now();
+            List<UUID> ids = outboxMessages.stream()
+                    .map(PaymentOutboxMessage::getId)
+                    .toList();
+            
+            int updatedCount = paymentOutboxRepository.bulkUpdateStatusAndFetchedAt(ids, OutboxStatus.PROCESSING, now);
+            log.info("Updated {} messages to PROCESSING status", updatedCount);
+            
             outboxMessages.forEach(message -> {
                 message.setOutboxStatus(OutboxStatus.PROCESSING);
                 message.setFetchedAt(now);
             });
-            saveAll(outboxMessages);
         }
         
         return outboxMessages;
@@ -118,11 +130,18 @@ public class PaymentOutboxHelper {
         if (!timedOutMessages.isEmpty()) {
             log.warn("Found {} timed out PROCESSING messages, resetting to STARTED", 
                     timedOutMessages.size());
+            
+            List<UUID> ids = timedOutMessages.stream()
+                    .map(PaymentOutboxMessage::getId)
+                    .toList();
+            
+            int updatedCount = paymentOutboxRepository.bulkUpdateStatusAndFetchedAt(ids, OutboxStatus.STARTED, null);
+            log.info("Reset {} messages to STARTED status", updatedCount);
+            
             timedOutMessages.forEach(message -> {
                 message.setOutboxStatus(OutboxStatus.STARTED);
                 message.setFetchedAt(null);
             });
-            saveAll(timedOutMessages);
         }
     }
 

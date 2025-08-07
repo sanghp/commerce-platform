@@ -16,10 +16,14 @@ public interface ProductOutboxRepository {
     List<ProductOutboxMessage> saveAll(List<ProductOutboxMessage> outboxMessages);
 
     void deleteByOutboxStatus(OutboxStatus outboxStatus);
-
+    
     List<ProductOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit);
+
+    List<ProductOutboxMessage> findByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit);
     
     List<ProductOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, ZonedDateTime fetchedAtBefore, int limit);
     
     Optional<ProductOutboxMessage> findById(UUID id);
+    
+    int bulkUpdateStatusAndFetchedAt(List<UUID> ids, OutboxStatus status, ZonedDateTime fetchedAt);
 } 

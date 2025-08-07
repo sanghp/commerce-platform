@@ -17,11 +17,13 @@ public interface PaymentOutboxRepository {
     
     Optional<PaymentOutboxMessage> findById(UUID id);
     
-    List<PaymentOutboxMessage> findByTypeAndOutboxStatus(ServiceMessageType type, OutboxStatus outboxStatus);
-    
     List<PaymentOutboxMessage> findByOutboxStatus(OutboxStatus outboxStatus, int limit);
+    
+    List<PaymentOutboxMessage> findByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit);
     
     List<PaymentOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, ZonedDateTime fetchedAtBefore, int limit);
     
     int deleteByOutboxStatus(OutboxStatus outboxStatus, int limit);
+    
+    int bulkUpdateStatusAndFetchedAt(List<UUID> ids, OutboxStatus status, ZonedDateTime fetchedAt);
 }

@@ -14,9 +14,20 @@ management:
 
 logging:
   level:
-    root: INFO
-    com.commerce.platform: DEBUG
-    org.springframework.web.client: DEBUG
+    # root: warn
+    # org.springframework: warn
+    # org.springframework.boot: warn
+    # org.hibernate.SQL: off
+    # org.hibernate.type.descriptor.sql: off
+    # com.zaxxer.hikari: error
+    # org.apache.coyote.http11: off
+    root: off
+    org.springframework: off
+    org.springframework.boot: off
+    org.hibernate.SQL: off
+    org.hibernate.type.descriptor.sql: off
+    com.zaxxer.hikari: error
+    org.apache.coyote.http11: off
 
 order-service:
   product-reservation-request-topic-name: product-reservation-request
@@ -58,8 +69,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     platform: mysql
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
+      maximum-pool-size: 20
+      minimum-idle: 10
       connection-test-query: SELECT 1
       pool-name: OrderServiceHikariPool
   flyway:
@@ -76,7 +87,7 @@ kafka-config:
 kafka-producer-config:
   key-serializer-class: org.apache.kafka.common.serialization.UUIDSerializer
   value-serializer-class: io.confluent.kafka.serializers.KafkaAvroSerializer
-  acks: all
+  acks: 1
   batch-size: 16384
   linger-ms: 5
   compression-type: none

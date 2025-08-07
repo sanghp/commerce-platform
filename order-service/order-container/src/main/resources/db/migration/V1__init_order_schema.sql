@@ -70,8 +70,8 @@ CREATE TABLE IF NOT EXISTS `order_outbox`
     CONSTRAINT `uk_order_outbox_message_id` UNIQUE (message_id),
     INDEX `idx_order_outbox_type_status` (type, outbox_status),
     INDEX `idx_order_outbox_saga_id` (saga_id),
-    INDEX `idx_order_outbox_fetch` (outbox_status, fetched_at)
-
+    INDEX `idx_order_outbox_fetch` (outbox_status, fetched_at),
+    INDEX `idx_order_outbox_created_at` (outbox_status, created_at)
 );
 
 CREATE TABLE IF NOT EXISTS `order_inbox`

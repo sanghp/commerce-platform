@@ -4,6 +4,7 @@ import com.commerce.platform.inbox.InboxScheduler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,15 +22,17 @@ public class PaymentInboxScheduler implements InboxScheduler {
     private int maxRetryCount;
     
     @Override
-    @Scheduled(fixedDelayString = "${payment-service.inbox-scheduler-fixed-rate}",
+    @Scheduled(fixedRateString = "${payment-service.inbox-scheduler-fixed-rate}",
             initialDelayString = "${payment-service.inbox-scheduler-initial-delay}")
+    @Async("inboxTaskExecutor")
     public void processInboxMessages() {
         log.debug("Processing payment inbox messages...");
         inboxMessageHelper.processInboxMessages(batchSize);
     }
     
-    @Scheduled(fixedDelayString = "${payment-service.inbox-retry-scheduler-fixed-rate}",
+    @Scheduled(fixedRateString = "${payment-service.inbox-retry-scheduler-fixed-rate}",
             initialDelayString = "${payment-service.inbox-retry-scheduler-initial-delay}")
+    @Async("inboxTaskExecutor")
     public void retryFailedMessages() {
         log.debug("Retrying failed payment inbox messages...");
         inboxMessageHelper.retryFailedMessages(maxRetryCount, batchSize);

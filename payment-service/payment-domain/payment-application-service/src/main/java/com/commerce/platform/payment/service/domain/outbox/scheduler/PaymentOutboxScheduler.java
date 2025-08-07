@@ -8,6 +8,7 @@ import com.commerce.platform.payment.service.domain.ports.output.message.publish
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import java.time.ZonedDateTime;
@@ -30,8 +31,9 @@ public class PaymentOutboxScheduler implements OutboxScheduler {
     private int processingTimeoutMinutes;
     
     @Override
-    @Scheduled(fixedDelayString = "${payment-service.outbox-scheduler-fixed-rate}",
+    @Scheduled(fixedRateString = "${payment-service.outbox-scheduler-fixed-rate}",
             initialDelayString = "${payment-service.outbox-scheduler-initial-delay}")
+    @Async("outboxTaskExecutor")
     public void processOutboxMessage() {
         paymentOutboxHelper.resetTimedOutMessages(processingTimeoutMinutes, batchSize);
         List<PaymentOutboxMessage> messagesToProcess = paymentOutboxHelper.updateMessagesToProcessing(batchSize);
