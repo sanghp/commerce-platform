@@ -39,6 +39,11 @@ public class KafkaProducerConfig<K extends Serializable, V extends SpecificRecor
         props.put(ProducerConfig.ACKS_CONFIG, kafkaProducerConfigData.getAcks());
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, kafkaProducerConfigData.getRequestTimeoutMs());
         props.put(ProducerConfig.RETRIES_CONFIG, kafkaProducerConfigData.getRetryCount());
+        
+        props.put(ProducerConfig.METADATA_MAX_AGE_CONFIG, kafkaProducerConfigData.getMetadataMaxAgeMs());
+        props.put("schema.registry.cache.size", kafkaProducerConfigData.getSchemaRegistryCacheSize());
+        props.put("auto.register.schemas", kafkaProducerConfigData.getAutoRegisterSchemas());
+        
         return props;
     }
 
