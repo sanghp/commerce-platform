@@ -20,6 +20,8 @@ public class ProductOutboxDataAccessMapper {
                 .payload(outboxMessage.getPayload())
                 .outboxStatus(outboxMessage.getOutboxStatus())
                 .version(outboxMessage.getVersion())
+                .traceId(outboxMessage.getTraceId())
+                .spanId(outboxMessage.getSpanId())
                 .build();
     }
 
@@ -36,6 +38,8 @@ public class ProductOutboxDataAccessMapper {
                 .payload(outboxEntity.getPayload())
                 .outboxStatus(outboxEntity.getOutboxStatus())
                 .version(outboxEntity.getVersion())
+                .traceId(outboxEntity.getTraceId())
+                .spanId(outboxEntity.getSpanId())
                 .build();
     }
 } 

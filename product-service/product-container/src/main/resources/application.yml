@@ -11,39 +11,53 @@ management:
       show-values: ALWAYS
     health:
       show-details: always
+  tracing:
+    sampling:
+      probability: 0.1  # 10% sampling rate
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
 
 logging:
   level:
-    # root: warn
-    # org.springframework: warn
-    # org.springframework.boot: warn
-    # org.hibernate.SQL: off
-    # org.hibernate.type.descriptor.sql: off
-    # com.zaxxer.hikari: error
-    # org.apache.coyote.http11: off
-    root: off
-    org.springframework: off
-    org.springframework.boot: off
-    org.hibernate.SQL: off
-    org.hibernate.type.descriptor.sql: off
-    com.zaxxer.hikari: error
-    org.apache.coyote.http11: off
+    root: error
+#    root: info
+#    io.micrometer.tracing: DEBUG
+#    io.opentelemetry: INFO
+#    io.micrometer.observation: DEBUG
+#    org.hibernate.SQL: off
+#    org.hibernate.type.descriptor.sql: off
+#    com.zaxxer.hikari: error
+#    org.apache.coyote.http11: off
 
 product-service:
   product-reservation-request-topic-name: product-reservation-request
   product-reservation-response-topic-name: product-reservation-response
-  outbox-scheduler-fixed-rate: 50
-  outbox-scheduler-initial-delay: 1000
-  outbox-scheduler-batch-size: 100
+  outbox-scheduler-fixed-rate: 10
+  outbox-scheduler-initial-delay: 100
+  outbox-scheduler-batch-size: 50
   outbox-processing-timeout-minutes: 5
   outbox-cleaner-cron: "@midnight"
   outbox-cleaner-batch-size: 100
-  inbox-scheduler-fixed-rate: 50
-  inbox-retry-scheduler-fixed-rate: 1000
+  inbox-scheduler-fixed-rate: 100
+  inbox-retry-scheduler-fixed-rate: 5000
   inbox-max-retry-count: 3
-  inbox-batch-size: 200
+  inbox-batch-size: 50
 
 spring:
+  application:
+    name: product-service
+  otel:
+    resource:
+      attributes:
+        service.name: product-service
+        service.version: 1.0.0
+    exporter:
+      otlp:
+        endpoint: http://localhost:4318
+    traces:
+      sampler:
+        probability: 0.1  # 10% sampling
   main:
     banner-mode: off
   jpa:
@@ -56,6 +70,7 @@ spring:
     properties:
       hibernate:
         default_schema: product
+        dialect: org.hibernate.dialect.MySQLDialect
   datasource:
     url: jdbc:mysql://localhost:13306/product?allowPublicKeyRetrieval=true&useSSL=false&createDatabaseIfNotExist=true&serverTimezone=UTC
     username: root
@@ -81,11 +96,11 @@ kafka-producer-config:
   key-serializer-class: org.apache.kafka.common.serialization.UUIDSerializer
   value-serializer-class: io.confluent.kafka.serializers.KafkaAvroSerializer
   acks: 1
-  batch-size: 16384
-  linger-ms: 5
-  compression-type: none
-  request-timeout-ms: 60000
-  retry-count: 5
+  batch-size: 32768
+  linger-ms: 10
+  compression-type: lz4
+  request-timeout-ms: 30000
+  retry-count: 3
   metadata-max-age-ms: 300000
   schema-registry-cache-size: 100
   auto-register-schemas: false
@@ -98,7 +113,7 @@ kafka-consumer-config:
   auto-offset-reset: earliest
   specific-avro-reader-key: specific.avro.reader
   specific-avro-reader: true
-  batch-listener: true
+  batch-listener: false
   auto-startup: true
   enable-auto-commit: false
   concurrency-level: 10
@@ -117,3 +132,9 @@ spring:
       on-profile: docker
   flyway:
     enabled: false
+  datasource:
+    url: jdbc:mysql://mysql:3306/product?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+
+kafka-config:
+  bootstrap-servers: kafka-broker-1:29092, kafka-broker-2:29093, kafka-broker-3:29094
+  schema-registry-url: http://schema-registry:8081

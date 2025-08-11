@@ -25,4 +25,6 @@ public class OrderInboxMessage {
     private ZonedDateTime processedAt;
     private Integer retryCount;
     private String errorMessage;
+    private String traceId;
+    private String spanId;
 }

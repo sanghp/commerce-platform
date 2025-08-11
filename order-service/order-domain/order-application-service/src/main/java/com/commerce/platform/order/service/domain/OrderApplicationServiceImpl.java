@@ -14,6 +14,7 @@ import com.commerce.platform.order.service.domain.ports.input.service.OrderAppli
 import com.commerce.platform.order.service.domain.ports.output.client.ProductServiceClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
@@ -42,6 +43,7 @@ class OrderApplicationServiceImpl implements OrderApplicationService {
     }
 
     @Override
+    @Transactional
     public CreateOrderResponse createOrder(CreateOrderCommand createOrderCommand) {
         List<UUID> productIds = createOrderCommand.getItems().stream()
                 .map(OrderItem::getProductId)

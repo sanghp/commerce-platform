@@ -42,6 +42,10 @@ public class PaymentOutboxEntity {
     @Version
     private int version;
     
+    private String traceId;
+    
+    private String spanId;
+    
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

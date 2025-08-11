@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface ProductReservationResponseMessageListener {
     void saveToInbox(List<ProductReservationResponse> productReservationResponses);
+    void saveToInboxWithTrace(List<ProductReservationResponse> productReservationResponses, String traceId, String spanId);
 }

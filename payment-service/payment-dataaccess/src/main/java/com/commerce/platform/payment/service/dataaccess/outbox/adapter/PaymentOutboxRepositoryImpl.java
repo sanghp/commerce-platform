@@ -1,5 +1,6 @@
 package com.commerce.platform.payment.service.dataaccess.outbox.adapter;
 
+import com.commerce.platform.domain.event.ServiceMessageType;
 import com.commerce.platform.outbox.OutboxStatus;
 import com.commerce.platform.payment.service.dataaccess.outbox.mapper.PaymentOutboxDataAccessMapper;
 import com.commerce.platform.payment.service.dataaccess.outbox.repository.PaymentOutboxJpaRepository;
@@ -8,12 +9,15 @@ import com.commerce.platform.payment.service.domain.ports.output.repository.Paym
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -65,19 +69,21 @@ public class PaymentOutboxRepositoryImpl implements PaymentOutboxRepository {
     
     @Override
     public List<PaymentOutboxMessage> findByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit) {
-        return paymentOutboxJpaRepository.findByOutboxStatusWithSkipLock(outboxStatus.name(), limit)
-                .stream()
-                .map(paymentOutboxDataAccessMapper::outboxEntityToPaymentOutboxMessage)
-                .collect(Collectors.toList());
+        String sql = "SELECT BIN_TO_UUID(id) as id, BIN_TO_UUID(message_id) as message_id, BIN_TO_UUID(saga_id) as saga_id, " +
+                    "type, payload, outbox_status, created_at, processed_at, fetched_at, version " +
+                    "FROM payment_outbox WHERE outbox_status = ? ORDER BY created_at LIMIT ? FOR UPDATE SKIP LOCKED";
+        
+        return jdbcTemplate.query(sql, new Object[]{outboxStatus.name(), limit}, new PaymentOutboxRowMapper());
     }
     
     @Override
     public List<PaymentOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, ZonedDateTime fetchedAtBefore, int limit) {
-        return paymentOutboxJpaRepository.findByOutboxStatusAndFetchedAtBeforeOrderByCreatedAt(outboxStatus, fetchedAtBefore)
-                .stream()
-                .limit(limit)
-                .map(paymentOutboxDataAccessMapper::outboxEntityToPaymentOutboxMessage)
-                .collect(Collectors.toList());
+        String sql = "SELECT BIN_TO_UUID(id) as id, BIN_TO_UUID(message_id) as message_id, BIN_TO_UUID(saga_id) as saga_id, " +
+                    "type, payload, outbox_status, created_at, processed_at, fetched_at, version " +
+                    "FROM payment_outbox WHERE outbox_status = ? AND fetched_at < ? ORDER BY created_at LIMIT ?";
+        
+        return jdbcTemplate.query(sql, new Object[]{outboxStatus.name(), 
+                java.sql.Timestamp.from(fetchedAtBefore.toInstant()), limit}, new PaymentOutboxRowMapper());
     }
     
     @Override
@@ -120,5 +126,25 @@ public class PaymentOutboxRepositoryImpl implements PaymentOutboxRepository {
         });
         
         return java.util.Arrays.stream(updateCounts).sum();
+    }
+    
+    private static class PaymentOutboxRowMapper implements RowMapper<PaymentOutboxMessage> {
+        @Override
+        public PaymentOutboxMessage mapRow(ResultSet rs, int rowNum) throws SQLException {
+            return PaymentOutboxMessage.builder()
+                    .id(UUID.fromString(rs.getString("id")))
+                    .messageId(UUID.fromString(rs.getString("message_id")))
+                    .sagaId(UUID.fromString(rs.getString("saga_id")))
+                    .type(ServiceMessageType.valueOf(rs.getString("type")))
+                    .payload(rs.getString("payload"))
+                    .outboxStatus(OutboxStatus.valueOf(rs.getString("outbox_status")))
+                    .createdAt(ZonedDateTime.ofInstant(rs.getTimestamp("created_at").toInstant(), ZoneId.of("UTC")))
+                    .processedAt(rs.getTimestamp("processed_at") != null ? 
+                            ZonedDateTime.ofInstant(rs.getTimestamp("processed_at").toInstant(), ZoneId.of("UTC")) : null)
+                    .fetchedAt(rs.getTimestamp("fetched_at") != null ? 
+                            ZonedDateTime.ofInstant(rs.getTimestamp("fetched_at").toInstant(), ZoneId.of("UTC")) : null)
+                    .version(rs.getInt("version"))
+                    .build();
+        }
     }
 }

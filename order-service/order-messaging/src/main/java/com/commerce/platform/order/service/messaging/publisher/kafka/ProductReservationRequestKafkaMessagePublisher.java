@@ -3,35 +3,38 @@ package com.commerce.platform.order.service.messaging.publisher.kafka;
 import com.commerce.platform.kafka.order.avro.model.ProductReservationRequestAvroModel;
 import com.commerce.platform.order.service.messaging.mapper.OrderMessagingDataMapper;
 import com.commerce.platform.kafka.producer.KafkaMessageHelper;
-import com.commerce.platform.kafka.producer.service.KafkaProducer;
+import com.commerce.platform.kafka.producer.service.TracingKafkaProducer;
 import com.commerce.platform.order.service.domain.config.OrderServiceConfigData;
 import com.commerce.platform.order.service.domain.outbox.model.product.ProductReservationEventPayload;
 import com.commerce.platform.order.service.domain.outbox.model.OrderOutboxMessage;
 import com.commerce.platform.order.service.domain.ports.output.message.publisher.product.ProductReservationRequestMessagePublisher;
 import com.commerce.platform.outbox.OutboxStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 import com.commerce.platform.order.service.domain.outbox.scheduler.OrderOutboxHelper;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Component
 public class ProductReservationRequestKafkaMessagePublisher implements ProductReservationRequestMessagePublisher {
 
     private final OrderMessagingDataMapper orderMessagingDataMapper;
-    private final KafkaProducer<UUID, ProductReservationRequestAvroModel> kafkaProducer;
+    private final TracingKafkaProducer<UUID, ProductReservationRequestAvroModel> tracingKafkaProducer;
     private final OrderServiceConfigData orderServiceConfigData;
     private final KafkaMessageHelper kafkaMessageHelper;
     private final OrderOutboxHelper orderOutboxHelper;
 
     public ProductReservationRequestKafkaMessagePublisher(OrderMessagingDataMapper orderMessagingDataMapper,
-                                                          KafkaProducer<UUID, ProductReservationRequestAvroModel> kafkaProducer,
+                                                          @Qualifier("productReservationTracingKafkaProducer") TracingKafkaProducer<UUID, ProductReservationRequestAvroModel> productReservationTracingKafkaProducer,
                                                           OrderServiceConfigData orderServiceConfigData,
                                                           KafkaMessageHelper kafkaMessageHelper,
                                                           OrderOutboxHelper orderOutboxHelper) {
         this.orderMessagingDataMapper = orderMessagingDataMapper;
-        this.kafkaProducer = kafkaProducer;
+        this.tracingKafkaProducer = productReservationTracingKafkaProducer;
         this.orderServiceConfigData = orderServiceConfigData;
         this.kafkaMessageHelper = kafkaMessageHelper;
         this.orderOutboxHelper = orderOutboxHelper;
@@ -45,26 +48,38 @@ public class ProductReservationRequestKafkaMessagePublisher implements ProductRe
 
         UUID sagaId = orderOutboxMessage.getSagaId();
 
-        log.info("Received OrderOutboxMessage for order id: {} and saga id: {}",
-                productReservationEventPayload.getOrderId(),
-                sagaId);
+        log.info("Publishing OrderOutboxMessage for order id: {} and saga id: {}",
+                productReservationEventPayload.getOrderId(), sagaId);
 
         try {
             ProductReservationRequestAvroModel productReservationRequestAvroModel = orderMessagingDataMapper
                     .productReservationEventToRequestAvroModel(orderOutboxMessage.getMessageId(), sagaId, productReservationEventPayload);
 
-            kafkaProducer.send(orderServiceConfigData.getProductReservationRequestTopicName(),
-                    sagaId,
-                    productReservationRequestAvroModel)
-                    .whenComplete(kafkaMessageHelper.getKafkaCallback(orderServiceConfigData.getProductReservationRequestTopicName(),
-                            productReservationRequestAvroModel,
-                            orderOutboxMessage,
-                            (message, status) -> {
-                                log.info("Kafka callback invoked for message id: {} with status: {}", message.getId(), status);
-                                orderOutboxHelper.updateOutboxMessageStatus(message.getId(), status);
-                            },
-                            productReservationEventPayload.getOrderId(),
-                            "ProductReservationRequestAvroModel"));
+            // Use explicit trace context if available, otherwise use current context
+            CompletableFuture<SendResult<UUID, ProductReservationRequestAvroModel>> sendFuture;
+            if (orderOutboxMessage.getTraceId() != null && orderOutboxMessage.getSpanId() != null) {
+                sendFuture = tracingKafkaProducer.sendWithTraceContext(
+                        orderServiceConfigData.getProductReservationRequestTopicName(),
+                        sagaId,
+                        productReservationRequestAvroModel,
+                        orderOutboxMessage.getTraceId(),
+                        orderOutboxMessage.getSpanId());
+            } else {
+                sendFuture = tracingKafkaProducer.send(
+                        orderServiceConfigData.getProductReservationRequestTopicName(),
+                        sagaId,
+                        productReservationRequestAvroModel);
+            }
+            
+            sendFuture.whenComplete((result, ex) -> {
+                if (ex == null) {
+                    log.info("Kafka callback invoked for message id: {} with status: SUCCESS", orderOutboxMessage.getId());
+                    orderOutboxHelper.updateOutboxMessageStatus(orderOutboxMessage.getId(), OutboxStatus.COMPLETED);
+                } else {
+                    log.error("Failed to send message: {}", ex.getMessage());
+                    orderOutboxHelper.updateOutboxMessageStatus(orderOutboxMessage.getId(), OutboxStatus.FAILED);
+                }
+            });
 
             log.info("ProductReservationEventPayload sent to Kafka for order id: {} and saga id: {}",
                     productReservationEventPayload.getOrderId(), sagaId);

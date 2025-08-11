@@ -100,6 +100,18 @@ services:
     networks:
       - commerce-platform
 
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"    # Jaeger UI
+      - "4317:4317"      # OTLP gRPC endpoint
+      - "4318:4318"      # OTLP HTTP endpoint
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - commerce-platform
+
   init-kafka:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
@@ -114,10 +126,10 @@ services:
       echo 'Waiting for Kafka to be ready...'
       kafka-topics --bootstrap-server kafka1:29092 --list
 
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-request --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-request --partitions 3 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 3 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 3 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 3 --replication-factor 3
 
       echo 'Topics created:'
       kafka-topics --bootstrap-server kafka1:29092 --list

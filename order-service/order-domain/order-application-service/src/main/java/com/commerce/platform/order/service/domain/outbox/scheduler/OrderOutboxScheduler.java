@@ -8,7 +8,6 @@ import com.commerce.platform.outbox.OutboxStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -35,8 +34,8 @@ public class OrderOutboxScheduler implements OutboxScheduler {
     @Override
     @Scheduled(fixedRateString = "${order-service.outbox-scheduler-fixed-rate}",
             initialDelayString = "${order-service.outbox-scheduler-initial-delay}")
-    @Async("outboxTaskExecutor")
     public void processOutboxMessage() {
+        // Don't use @Async - it breaks trace context
         orderOutboxHelper.resetTimedOutMessages(processingTimeoutMinutes, batchSize);
         List<OrderOutboxMessage> messagesToProcess = orderOutboxHelper.updateMessagesToProcessing(batchSize);
         
@@ -54,6 +53,15 @@ public class OrderOutboxScheduler implements OutboxScheduler {
     }
     
     private void publishMessage(OrderOutboxMessage outboxMessage) {
+        // Log trace context info if available
+        if (outboxMessage.getTraceId() != null && outboxMessage.getSpanId() != null) {
+            log.info("Processing outbox message {} with traceId={}, spanId={}",
+                    outboxMessage.getId(), outboxMessage.getTraceId(), outboxMessage.getSpanId());
+        } else {
+            log.warn("No trace context found for outbox message {}", outboxMessage.getId());
+        }
+        
+        // Let the publisher handle trace context propagation
         ServiceMessageType messageType = ServiceMessageType.valueOf(outboxMessage.getType());
         switch (messageType) {
             case PAYMENT_REQUEST:

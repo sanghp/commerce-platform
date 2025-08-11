@@ -2,7 +2,7 @@ package com.commerce.platform.payment.service.messaging.publisher.kafka;
 
 import com.commerce.platform.kafka.order.avro.model.PaymentResponseAvroModel;
 import com.commerce.platform.kafka.producer.KafkaMessageHelper;
-import com.commerce.platform.kafka.producer.service.KafkaProducer;
+import com.commerce.platform.kafka.producer.service.TracingKafkaProducer;
 import com.commerce.platform.outbox.OutboxStatus;
 import com.commerce.platform.payment.service.domain.config.PaymentServiceConfigData;
 import com.commerce.platform.payment.service.domain.outbox.model.PaymentEventPayload;
@@ -11,6 +11,7 @@ import com.commerce.platform.payment.service.domain.outbox.scheduler.PaymentOutb
 import com.commerce.platform.payment.service.domain.ports.output.message.publisher.PaymentResponseMessagePublisher;
 import com.commerce.platform.payment.service.messaging.mapper.PaymentMessagingDataMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -20,18 +21,18 @@ import java.util.UUID;
 public class PaymentResponseKafkaMessagePublisher implements PaymentResponseMessagePublisher {
 
     private final PaymentMessagingDataMapper paymentMessagingDataMapper;
-    private final KafkaProducer<UUID, PaymentResponseAvroModel> kafkaProducer;
+    private final TracingKafkaProducer<UUID, PaymentResponseAvroModel> tracingKafkaProducer;
     private final PaymentServiceConfigData paymentServiceConfigData;
     private final KafkaMessageHelper kafkaMessageHelper;
     private final PaymentOutboxHelper paymentOutboxHelper;
 
     public PaymentResponseKafkaMessagePublisher(PaymentMessagingDataMapper paymentMessagingDataMapper,
-                                                KafkaProducer<UUID, PaymentResponseAvroModel> kafkaProducer,
+                                                @Qualifier("paymentResponseTracingKafkaProducer") TracingKafkaProducer<UUID, PaymentResponseAvroModel> paymentResponseTracingKafkaProducer,
                                                 PaymentServiceConfigData paymentServiceConfigData,
                                                 KafkaMessageHelper kafkaMessageHelper,
                                                 PaymentOutboxHelper paymentOutboxHelper) {
         this.paymentMessagingDataMapper = paymentMessagingDataMapper;
-        this.kafkaProducer = kafkaProducer;
+        this.tracingKafkaProducer = paymentResponseTracingKafkaProducer;
         this.paymentServiceConfigData = paymentServiceConfigData;
         this.kafkaMessageHelper = kafkaMessageHelper;
         this.paymentOutboxHelper = paymentOutboxHelper;
@@ -53,18 +54,18 @@ public class PaymentResponseKafkaMessagePublisher implements PaymentResponseMess
             PaymentResponseAvroModel paymentResponseAvroModel = paymentMessagingDataMapper
                     .paymentEventPayloadToPaymentResponseAvroModel(paymentOutboxMessage.getMessageId(), sagaId, paymentEventPayload);
 
-            kafkaProducer.send(paymentServiceConfigData.getPaymentResponseTopicName(),
+            tracingKafkaProducer.send(paymentServiceConfigData.getPaymentResponseTopicName(),
                     sagaId,
                     paymentResponseAvroModel)
-                    .whenComplete(kafkaMessageHelper.getKafkaCallback(paymentServiceConfigData.getPaymentResponseTopicName(),
-                            paymentResponseAvroModel,
-                            paymentOutboxMessage,
-                            (message, status) -> {
-                                log.info("Kafka callback invoked for message id: {} with status: {}", message.getId(), status);
-                                paymentOutboxHelper.updateOutboxMessageStatus(message.getId(), status);
-                            },
-                            paymentEventPayload.getOrderId(),
-                            "PaymentResponseAvroModel"));
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Kafka callback invoked for message id: {} with status: SUCCESS", paymentOutboxMessage.getId());
+                            paymentOutboxHelper.updateOutboxMessageStatus(paymentOutboxMessage.getId(), OutboxStatus.COMPLETED);
+                        } else {
+                            log.error("Failed to send message: {}", ex.getMessage());
+                            paymentOutboxHelper.updateOutboxMessageStatus(paymentOutboxMessage.getId(), OutboxStatus.FAILED);
+                        }
+                    });
 
             log.info("PaymentEventPayload sent to Kafka for order id: {} and saga id: {}",
                     paymentEventPayload.getOrderId(), sagaId);

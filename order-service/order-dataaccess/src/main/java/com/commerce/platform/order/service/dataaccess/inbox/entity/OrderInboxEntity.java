@@ -31,6 +31,8 @@ public class OrderInboxEntity {
     private ZonedDateTime processedAt;
     private Integer retryCount;
     private String errorMessage;
+    private String traceId;
+    private String spanId;
 
     @Override
     public boolean equals(Object o) {

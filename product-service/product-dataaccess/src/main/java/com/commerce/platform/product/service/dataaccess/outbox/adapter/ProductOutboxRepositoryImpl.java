@@ -11,13 +11,15 @@ import com.commerce.platform.outbox.OutboxStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -68,19 +70,21 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
     
     @Override
     public List<ProductOutboxMessage> findByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit) {
-        return outboxJpaRepository.findByOutboxStatusWithSkipLock(outboxStatus.name(), limit)
-                .stream()
-                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
-                .collect(Collectors.toList());
+        String sql = "SELECT BIN_TO_UUID(id) as id, BIN_TO_UUID(message_id) as message_id, BIN_TO_UUID(saga_id) as saga_id, " +
+                    "type, payload, outbox_status, created_at, processed_at, fetched_at, version " +
+                    "FROM product_outbox WHERE outbox_status = ? ORDER BY created_at LIMIT ? FOR UPDATE SKIP LOCKED";
+        
+        return jdbcTemplate.query(sql, new Object[]{outboxStatus.name(), limit}, new ProductOutboxRowMapper());
     }
     
     @Override
     public List<ProductOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, ZonedDateTime fetchedAtBefore, int limit) {
-        return outboxJpaRepository.findByOutboxStatusAndFetchedAtBeforeOrderByCreatedAt(outboxStatus, fetchedAtBefore)
-                .stream()
-                .limit(limit)
-                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
-                .collect(Collectors.toList());
+        String sql = "SELECT BIN_TO_UUID(id) as id, BIN_TO_UUID(message_id) as message_id, BIN_TO_UUID(saga_id) as saga_id, " +
+                    "type, payload, outbox_status, created_at, processed_at, fetched_at, version " +
+                    "FROM product_outbox WHERE outbox_status = ? AND fetched_at < ? ORDER BY created_at LIMIT ?";
+        
+        return jdbcTemplate.query(sql, new Object[]{outboxStatus.name(), 
+                java.sql.Timestamp.from(fetchedAtBefore.toInstant()), limit}, new ProductOutboxRowMapper());
     }
     
     @Override
@@ -117,5 +121,25 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
         });
         
         return java.util.Arrays.stream(updateCounts).sum();
+    }
+    
+    private static class ProductOutboxRowMapper implements RowMapper<ProductOutboxMessage> {
+        @Override
+        public ProductOutboxMessage mapRow(ResultSet rs, int rowNum) throws SQLException {
+            return ProductOutboxMessage.builder()
+                    .id(UUID.fromString(rs.getString("id")))
+                    .messageId(UUID.fromString(rs.getString("message_id")))
+                    .sagaId(UUID.fromString(rs.getString("saga_id")))
+                    .type(ServiceMessageType.valueOf(rs.getString("type")))
+                    .payload(rs.getString("payload"))
+                    .outboxStatus(OutboxStatus.valueOf(rs.getString("outbox_status")))
+                    .createdAt(ZonedDateTime.ofInstant(rs.getTimestamp("created_at").toInstant(), ZoneId.of("UTC")))
+                    .processedAt(rs.getTimestamp("processed_at") != null ? 
+                            ZonedDateTime.ofInstant(rs.getTimestamp("processed_at").toInstant(), ZoneId.of("UTC")) : null)
+                    .fetchedAt(rs.getTimestamp("fetched_at") != null ? 
+                            ZonedDateTime.ofInstant(rs.getTimestamp("fetched_at").toInstant(), ZoneId.of("UTC")) : null)
+                    .version(rs.getInt("version"))
+                    .build();
+        }
     }
 } 

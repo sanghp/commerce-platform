@@ -1,0 +1,17 @@
+FROM com.commerce.platform/payment.service:0.0.1-SNAPSHOT
+
+USER root
+
+# OpenTelemetry Java Agent 다운로드
+ADD --chmod=644 https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.10.0/opentelemetry-javaagent.jar /workspace/opentelemetry-javaagent.jar
+
+# 환경 변수 설정
+ENV JAVA_TOOL_OPTIONS="-javaagent:/workspace/opentelemetry-javaagent.jar"
+ENV OTEL_SERVICE_NAME="payment-service"
+ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://jaeger:4318"
+ENV OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
+ENV OTEL_METRICS_EXPORTER="none"
+ENV OTEL_LOGS_EXPORTER="none"
+ENV OTEL_TRACES_EXPORTER="otlp"
+
+USER 1000

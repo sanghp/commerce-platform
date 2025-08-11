@@ -8,6 +8,8 @@ import com.commerce.platform.payment.service.domain.outbox.model.PaymentOutboxMe
 import com.commerce.platform.payment.service.domain.ports.output.repository.PaymentOutboxRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -60,6 +62,11 @@ public class PaymentOutboxHelper {
                                         Object eventPayload,
                                         OutboxStatus outboxStatus,
                                         UUID sagaId) {
+        // Capture current TraceContext
+        SpanContext spanContext = Span.current().getSpanContext();
+        String traceId = spanContext.isValid() ? spanContext.getTraceId() : null;
+        String spanId = spanContext.isValid() ? spanContext.getSpanId() : null;
+        
         save(PaymentOutboxMessage.builder()
                 .id(UuidGenerator.generate())
                 .messageId(UuidGenerator.generate())
@@ -69,6 +76,8 @@ public class PaymentOutboxHelper {
                 .payload(createPayload(eventPayload))
                 .outboxStatus(outboxStatus)
                 .version(0)
+                .traceId(traceId)
+                .spanId(spanId)
                 .build());
     }
     

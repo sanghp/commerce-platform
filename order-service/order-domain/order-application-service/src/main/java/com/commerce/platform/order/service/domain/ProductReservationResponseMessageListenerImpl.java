@@ -36,21 +36,28 @@ public class ProductReservationResponseMessageListenerImpl implements ProductRes
     @Override
     @Transactional
     public void saveToInbox(List<ProductReservationResponse> productReservationResponses) {
+        saveToInboxWithTrace(productReservationResponses, null, null);
+    }
+    
+    @Override
+    @Transactional
+    public void saveToInboxWithTrace(List<ProductReservationResponse> productReservationResponses, String traceId, String spanId) {
         if (productReservationResponses.isEmpty()) {
             return;
         }
         
         ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
         List<OrderInboxMessage> inboxMessages = productReservationResponses.stream()
-                .map(response -> createInboxMessage(response, now))
+                .map(response -> createInboxMessage(response, now, traceId, spanId))
                 .toList();
         
         orderInboxRepository.saveAll(inboxMessages);
         
-        log.info("Saved {} ProductReservationResponse messages to inbox", inboxMessages.size());
+        log.info("Saved {} ProductReservationResponse messages to inbox with traceId: {}", inboxMessages.size(), traceId);
     }
 
-    private OrderInboxMessage createInboxMessage(ProductReservationResponse productReservationResponse, ZonedDateTime receivedAt) {
+    private OrderInboxMessage createInboxMessage(ProductReservationResponse productReservationResponse, 
+                                                ZonedDateTime receivedAt, String traceId, String spanId) {
         return OrderInboxMessage.builder()
                 .id(UuidGenerator.generate())
                 .messageId(productReservationResponse.getId())
@@ -60,6 +67,8 @@ public class ProductReservationResponseMessageListenerImpl implements ProductRes
                 .status(InboxStatus.RECEIVED)
                 .receivedAt(receivedAt)
                 .retryCount(0)
+                .traceId(traceId)
+                .spanId(spanId)
                 .build();
     }
 

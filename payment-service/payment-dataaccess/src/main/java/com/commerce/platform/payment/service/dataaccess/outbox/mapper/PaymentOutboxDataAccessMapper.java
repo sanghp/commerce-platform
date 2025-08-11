@@ -19,6 +19,8 @@ public class PaymentOutboxDataAccessMapper {
                 .payload(paymentOutboxMessage.getPayload())
                 .outboxStatus(paymentOutboxMessage.getOutboxStatus())
                 .version(paymentOutboxMessage.getVersion())
+                .traceId(paymentOutboxMessage.getTraceId())
+                .spanId(paymentOutboxMessage.getSpanId())
                 .build();
     }
     
@@ -34,6 +36,8 @@ public class PaymentOutboxDataAccessMapper {
                 .payload(paymentOutboxEntity.getPayload())
                 .outboxStatus(paymentOutboxEntity.getOutboxStatus())
                 .version(paymentOutboxEntity.getVersion())
+                .traceId(paymentOutboxEntity.getTraceId())
+                .spanId(paymentOutboxEntity.getSpanId())
                 .build();
     }
 }

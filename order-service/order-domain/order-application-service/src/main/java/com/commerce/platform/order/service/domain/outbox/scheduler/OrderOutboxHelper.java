@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import com.commerce.platform.domain.util.UuidGenerator;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -59,6 +61,10 @@ public class OrderOutboxHelper {
                                        Object eventPayload,
                                        OutboxStatus outboxStatus,
                                        UUID sagaId) {
+        SpanContext spanContext = Span.current().getSpanContext();
+        String traceId = spanContext.isValid() ? spanContext.getTraceId() : null;
+        String spanId = spanContext.isValid() ? spanContext.getSpanId() : null;
+        
         save(OrderOutboxMessage.builder()
                 .id(UuidGenerator.generate())
                 .messageId(UuidGenerator.generate())
@@ -68,6 +74,8 @@ public class OrderOutboxHelper {
                 .payload(createPayload(eventPayload))
                 .outboxStatus(outboxStatus)
                 .version(0)
+                .traceId(traceId)
+                .spanId(spanId)
                 .build());
     }
 

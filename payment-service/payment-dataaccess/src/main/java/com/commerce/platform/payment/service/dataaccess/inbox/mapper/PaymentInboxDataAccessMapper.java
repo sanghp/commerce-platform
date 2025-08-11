@@ -19,6 +19,8 @@ public class PaymentInboxDataAccessMapper {
                 .processedAt(paymentInboxMessage.getProcessedAt())
                 .retryCount(paymentInboxMessage.getRetryCount())
                 .errorMessage(paymentInboxMessage.getErrorMessage())
+                .traceId(paymentInboxMessage.getTraceId())
+                .spanId(paymentInboxMessage.getSpanId())
                 .build();
     }
     
@@ -34,6 +36,8 @@ public class PaymentInboxDataAccessMapper {
                 .processedAt(paymentInboxEntity.getProcessedAt())
                 .retryCount(paymentInboxEntity.getRetryCount())
                 .errorMessage(paymentInboxEntity.getErrorMessage())
+                .traceId(paymentInboxEntity.getTraceId())
+                .spanId(paymentInboxEntity.getSpanId())
                 .build();
     }
 }

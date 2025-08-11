@@ -19,6 +19,8 @@ public class OrderOutboxDataAccessMapper {
                 .outboxStatus(orderOutboxMessage.getOutboxStatus())
                 .processedAt(orderOutboxMessage.getProcessedAt())
                 .version(orderOutboxMessage.getVersion())
+                .traceId(orderOutboxMessage.getTraceId())
+                .spanId(orderOutboxMessage.getSpanId())
                 .build();
     }
 
@@ -34,6 +36,8 @@ public class OrderOutboxDataAccessMapper {
                 .outboxStatus(orderOutboxEntity.getOutboxStatus())
                 .processedAt(orderOutboxEntity.getProcessedAt())
                 .version(orderOutboxEntity.getVersion())
+                .traceId(orderOutboxEntity.getTraceId())
+                .spanId(orderOutboxEntity.getSpanId())
                 .build();
     }
 }

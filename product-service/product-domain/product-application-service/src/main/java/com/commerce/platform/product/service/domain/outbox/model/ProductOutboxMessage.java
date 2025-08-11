@@ -28,5 +28,7 @@ public class ProductOutboxMessage {
     @Setter
     private OutboxStatus outboxStatus;
     private int version;
+    private String traceId;
+    private String spanId;
 
 }

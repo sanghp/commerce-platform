@@ -9,6 +9,8 @@ import com.commerce.platform.product.service.domain.outbox.model.ProductReservat
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductOutboxRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,6 +67,30 @@ public class ProductOutboxHelper {
     @Transactional
     public void deleteProductOutboxMessageByOutboxStatus(OutboxStatus outboxStatus) {
         outboxRepository.deleteByOutboxStatus(outboxStatus);
+    }
+
+    public ProductOutboxMessage createOutboxMessageWithTrace(UUID messageId, UUID sagaId, 
+                                                            ServiceMessageType type, 
+                                                            ProductReservationResponseEventPayload payload) {
+        // Capture current TraceContext
+        SpanContext spanContext = Span.current().getSpanContext();
+        String traceId = spanContext.isValid() ? spanContext.getTraceId() : null;
+        String spanId = spanContext.isValid() ? spanContext.getSpanId() : null;
+        
+        String payloadJson = createPayload(payload);
+        
+        return ProductOutboxMessage.builder()
+                .id(UUID.randomUUID())
+                .messageId(messageId)
+                .sagaId(sagaId)
+                .createdAt(ZonedDateTime.now())
+                .type(type)
+                .payload(payloadJson)
+                .outboxStatus(OutboxStatus.STARTED)
+                .version(0)
+                .traceId(traceId)
+                .spanId(spanId)
+                .build();
     }
 
     public String createPayload(ProductReservationResponseEventPayload payload) {

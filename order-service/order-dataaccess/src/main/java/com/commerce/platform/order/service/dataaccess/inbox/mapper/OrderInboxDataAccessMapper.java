@@ -19,6 +19,8 @@ public class OrderInboxDataAccessMapper {
                 .processedAt(orderInboxMessage.getProcessedAt())
                 .retryCount(orderInboxMessage.getRetryCount())
                 .errorMessage(orderInboxMessage.getErrorMessage())
+                .traceId(orderInboxMessage.getTraceId())
+                .spanId(orderInboxMessage.getSpanId())
                 .build();
     }
 
@@ -34,6 +36,8 @@ public class OrderInboxDataAccessMapper {
                 .processedAt(orderInboxEntity.getProcessedAt())
                 .retryCount(orderInboxEntity.getRetryCount())
                 .errorMessage(orderInboxEntity.getErrorMessage())
+                .traceId(orderInboxEntity.getTraceId())
+                .spanId(orderInboxEntity.getSpanId())
                 .build();
     }
 }

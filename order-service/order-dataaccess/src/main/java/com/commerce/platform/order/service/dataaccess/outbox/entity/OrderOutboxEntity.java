@@ -30,6 +30,8 @@ public class OrderOutboxEntity {
     private OutboxStatus outboxStatus;
     @Version
     private int version;
+    private String traceId;
+    private String spanId;
 
     @Override
     public boolean equals(Object o) {

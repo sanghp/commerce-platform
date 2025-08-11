@@ -13,6 +13,12 @@ import com.commerce.platform.payment.service.domain.outbox.scheduler.PaymentOutb
 import com.commerce.platform.payment.service.domain.ports.output.repository.PaymentInboxRepository;
 import com.commerce.platform.outbox.OutboxStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Scope;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +37,7 @@ public class PaymentInboxTransactionService {
     private final PaymentOutboxHelper paymentOutboxHelper;
     private final PaymentDataMapper paymentDataMapper;
     private final ObjectMapper objectMapper;
+    private final Tracer tracer;
     
     public PaymentInboxTransactionService(PaymentInboxRepository paymentInboxRepository,
                                         PaymentRequestHelper paymentRequestHelper,
@@ -42,54 +49,85 @@ public class PaymentInboxTransactionService {
         this.paymentOutboxHelper = paymentOutboxHelper;
         this.paymentDataMapper = paymentDataMapper;
         this.objectMapper = objectMapper;
+        this.tracer = GlobalOpenTelemetry.getTracer("payment-inbox", "1.0.0");
     }
     
     @Transactional
     public boolean processNextMessage() {
-        List<PaymentInboxMessage> messages = paymentInboxRepository
-                .findByStatusOrderByReceivedAtWithSkipLock(InboxStatus.RECEIVED, 1);
+        Span span = tracer.spanBuilder("payment.inbox.process")
+            .setSpanKind(SpanKind.INTERNAL)
+            .setAttribute("inbox.operation", "process_message")
+            .startSpan();
         
-        if (messages.isEmpty()) {
-            return false;
-        }
-        
-        PaymentInboxMessage inboxMessage = messages.getFirst();
-        ZonedDateTime processedAt = ZonedDateTime.now();
-        
-        try {
-            if (inboxMessage.getType() == ServiceMessageType.PAYMENT_REQUEST) {
-                processPaymentRequest(inboxMessage);
+        try (Scope scope = span.makeCurrent()) {
+            List<PaymentInboxMessage> messages = paymentInboxRepository
+                    .findByStatusOrderByReceivedAtWithSkipLock(InboxStatus.RECEIVED, 1);
+            
+            if (messages.isEmpty()) {
+                span.setAttribute("inbox.empty", true);
+                return false;
             }
             
-            inboxMessage.setStatus(InboxStatus.PROCESSED);
-            inboxMessage.setProcessedAt(processedAt);
+            PaymentInboxMessage inboxMessage = messages.getFirst();
+            span.setAttribute("inbox.message.id", inboxMessage.getId().toString());
+            span.setAttribute("inbox.saga.id", inboxMessage.getSagaId().toString());
+            span.setAttribute("inbox.message.type", inboxMessage.getType().toString());
             
-            log.info("Successfully processed inbox message: {} for saga: {}", 
-                    inboxMessage.getId(), inboxMessage.getSagaId());
+            ZonedDateTime processedAt = ZonedDateTime.now();
             
-        } catch (Exception e) {
-            log.error("Failed to process inbox message: {}", inboxMessage.getId(), e);
+            try {
+                if (inboxMessage.getType() == ServiceMessageType.PAYMENT_REQUEST) {
+                    processPaymentRequest(inboxMessage);
+                }
+                
+                inboxMessage.setStatus(InboxStatus.PROCESSED);
+                inboxMessage.setProcessedAt(processedAt);
+                
+                log.info("Successfully processed inbox message: {} for saga: {} with traceId: {}", 
+                        inboxMessage.getId(), inboxMessage.getSagaId(), span.getSpanContext().getTraceId());
+                
+            } catch (Exception e) {
+                span.setStatus(StatusCode.ERROR, e.getMessage());
+                span.recordException(e);
+                log.error("Failed to process inbox message: {}", inboxMessage.getId(), e);
+                
+                inboxMessage.setStatus(InboxStatus.FAILED);
+                inboxMessage.setErrorMessage(e.getMessage());
+                inboxMessage.setRetryCount(inboxMessage.getRetryCount() + 1);
+            }
             
-            inboxMessage.setStatus(InboxStatus.FAILED);
-            inboxMessage.setErrorMessage(e.getMessage());
-            inboxMessage.setRetryCount(inboxMessage.getRetryCount() + 1);
+            paymentInboxRepository.save(inboxMessage);
+            return true;
+        } finally {
+            span.end();
         }
-        
-        paymentInboxRepository.save(inboxMessage);
-        return true;
     }
     
     @Transactional
     public void retryFailedMessages(int maxRetryCount, int batchSize) {
-        List<PaymentInboxMessage> failedMessages = paymentInboxRepository
-                .findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus.FAILED, maxRetryCount, batchSize);
+        Span span = tracer.spanBuilder("payment.inbox.retry")
+            .setSpanKind(SpanKind.INTERNAL)
+            .setAttribute("inbox.operation", "retry_failed")
+            .setAttribute("inbox.max_retry", maxRetryCount)
+            .setAttribute("inbox.batch_size", batchSize)
+            .startSpan();
         
-        if (!failedMessages.isEmpty()) {
-            log.info("Retrying {} failed messages", failedMessages.size());
+        try (Scope scope = span.makeCurrent()) {
+            List<PaymentInboxMessage> failedMessages = paymentInboxRepository
+                    .findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus.FAILED, maxRetryCount, batchSize);
             
-            failedMessages.forEach(message -> message.setStatus(InboxStatus.RECEIVED));
+            span.setAttribute("inbox.retry.count", failedMessages.size());
             
-            paymentInboxRepository.saveAll(failedMessages);
+            if (!failedMessages.isEmpty()) {
+                log.info("Retrying {} failed messages with traceId: {}", 
+                    failedMessages.size(), span.getSpanContext().getTraceId());
+                
+                failedMessages.forEach(message -> message.setStatus(InboxStatus.RECEIVED));
+                
+                paymentInboxRepository.saveAll(failedMessages);
+            }
+        } finally {
+            span.end();
         }
     }
     

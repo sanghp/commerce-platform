@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS `order_outbox`
     payload JSON NOT NULL,
     outbox_status ENUM('STARTED', 'PROCESSING', 'COMPLETED', 'FAILED') NOT NULL,
     version integer NOT NULL,
+    trace_id VARCHAR(32),
+    span_id VARCHAR(16),
 
     PRIMARY KEY (id),
     CONSTRAINT `uk_order_outbox_message_id` UNIQUE (message_id),
@@ -86,6 +88,8 @@ CREATE TABLE IF NOT EXISTS `order_inbox`
     processed_at  TIMESTAMP(6),
     retry_count   INT DEFAULT 0,
     error_message TEXT,
+    trace_id      VARCHAR(32),
+    span_id       VARCHAR(16),
 
     PRIMARY KEY (id),
     CONSTRAINT `uk_order_inbox_message_id` UNIQUE (message_id),

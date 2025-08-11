@@ -20,6 +20,8 @@ public class OrderOutboxMessage {
     private String payload;
     private OutboxStatus outboxStatus;
     private int version;
+    private String traceId;
+    private String spanId;
 
     public void setProcessedAt(ZonedDateTime processedAt) {
         this.processedAt = processedAt;

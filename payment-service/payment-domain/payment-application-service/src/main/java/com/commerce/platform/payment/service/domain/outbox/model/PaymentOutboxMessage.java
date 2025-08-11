@@ -24,5 +24,7 @@ public class PaymentOutboxMessage {
     @Setter
     private OutboxStatus outboxStatus;
     private int version;
+    private String traceId;
+    private String spanId;
 
 }

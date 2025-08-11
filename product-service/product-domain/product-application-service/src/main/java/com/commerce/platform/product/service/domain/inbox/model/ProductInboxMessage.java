@@ -23,4 +23,6 @@ public class ProductInboxMessage {
     private ZonedDateTime processedAt;
     private int retryCount;
     private String errorMessage;
+    private String traceId;
+    private String spanId;
 }

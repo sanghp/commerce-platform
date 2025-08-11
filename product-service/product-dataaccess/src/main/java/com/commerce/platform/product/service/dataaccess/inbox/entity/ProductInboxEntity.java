@@ -41,6 +41,10 @@ public class ProductInboxEntity {
     
     private String errorMessage;
     
+    private String traceId;
+    
+    private String spanId;
+    
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

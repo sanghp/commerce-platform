@@ -20,6 +20,10 @@ import com.commerce.platform.product.service.domain.outbox.model.ProductReservat
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductRepository;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductReservationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.trace.*;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,46 +63,76 @@ public class ProductInboxMessageProcessor {
     
     @Transactional
     public void processProductReservationRequest(ProductInboxMessage inboxMessage) throws Exception {
-        ProductReservationRequest request = objectMapper.readValue(
-                inboxMessage.getPayload(), 
-                ProductReservationRequest.class
-        );
-        
-        UUID sagaId = request.getSagaId();
-        ServiceMessageType outboxType = ServiceMessageType.PRODUCT_RESERVATION_RESPONSE;
-        List<ProductDTO> productDTOs = request.getProducts();
-        List<Product> products = productDataMapper.productDTOsToProducts(productDTOs);
-        ZonedDateTime requestTime = ZonedDateTime.now();
-        UUID orderId = request.getOrderId();
-        
-        ProductReservationResponseEventPayload responsePayload;
-        
-        try {
-            switch (request.getReservationOrderStatus()) {
-                case PENDING:
-                    responsePayload = processProductReservation(products, orderId, sagaId, requestTime);
-                    log.info("Successfully processed product reservation for order id: {} with saga id: {}", orderId, sagaId);
-                    break;
-                    
-                case PAID:
-                    responsePayload = confirmProductReservation(orderId, sagaId, products, requestTime);
-                    log.info("Successfully confirmed product reservation for order id: {} with saga id: {}", orderId, sagaId);
-                    break;
-                    
-                case CANCELLED:
-                    responsePayload = cancelProductReservation(orderId, sagaId, products, requestTime);
-                    log.info("Successfully cancelled product reservation for order id: {} with saga id: {}", orderId, sagaId);
-                    break;
-                    
-                default:
-                    throw new ProductDomainException("Unknown reservation order status: " + request.getReservationOrderStatus());
-            }
-        } catch (Exception e) {
-            log.error("Failed to process product reservation for order id: {} with saga id: {}", orderId, sagaId, e);
-            responsePayload = createFailurePayload(orderId, sagaId, products, requestTime, e.getMessage());
+        // Restore TraceContext if available
+        Span span = null;
+        Scope scope = null;
+        if (inboxMessage.getTraceId() != null && inboxMessage.getSpanId() != null) {
+            Tracer tracer = GlobalOpenTelemetry.getTracer("product-service");
+            SpanContext parentContext = SpanContext.createFromRemoteParent(
+                    inboxMessage.getTraceId(),
+                    inboxMessage.getSpanId(),
+                    TraceFlags.getSampled(),
+                    TraceState.getDefault()
+            );
+            Context context = Context.current().with(Span.wrap(parentContext));
+            span = tracer.spanBuilder("process-product-reservation")
+                    .setParent(context)
+                    .startSpan();
+            scope = span.makeCurrent();
         }
         
-        saveOutboxMessage(sagaId, outboxType, responsePayload);
+        try {
+            ProductReservationRequest request = objectMapper.readValue(
+                    inboxMessage.getPayload(), 
+                    ProductReservationRequest.class
+            );
+            
+            UUID sagaId = request.getSagaId();
+            ServiceMessageType outboxType = ServiceMessageType.PRODUCT_RESERVATION_RESPONSE;
+            List<ProductDTO> productDTOs = request.getProducts();
+            List<Product> products = productDataMapper.productDTOsToProducts(productDTOs);
+            ZonedDateTime requestTime = ZonedDateTime.now();
+            UUID orderId = request.getOrderId();
+            
+            ProductReservationResponseEventPayload responsePayload;
+            
+            try {
+                switch (request.getReservationOrderStatus()) {
+                    case PENDING:
+                        responsePayload = processProductReservation(products, orderId, sagaId, requestTime);
+                        log.info("Successfully processed product reservation for order id: {} with saga id: {}", orderId, sagaId);
+                        break;
+                        
+                    case PAID:
+                        responsePayload = confirmProductReservation(orderId, sagaId, products, requestTime);
+                        log.info("Successfully confirmed product reservation for order id: {} with saga id: {}", orderId, sagaId);
+                        break;
+                        
+                    case CANCELLED:
+                        responsePayload = cancelProductReservation(orderId, sagaId, products, requestTime);
+                        log.info("Successfully cancelled product reservation for order id: {} with saga id: {}", orderId, sagaId);
+                        break;
+                        
+                    default:
+                        throw new ProductDomainException("Unknown reservation order status: " + request.getReservationOrderStatus());
+                }
+            } catch (Exception e) {
+                log.error("Failed to process product reservation for order id: {} with saga id: {}", orderId, sagaId, e);
+                responsePayload = createFailurePayload(orderId, sagaId, products, requestTime, e.getMessage());
+                if (span != null) {
+                    span.recordException(e);
+                }
+            }
+            
+            saveOutboxMessage(sagaId, outboxType, responsePayload);
+        } finally {
+            if (span != null) {
+                span.end();
+            }
+            if (scope != null) {
+                scope.close();
+            }
+        }
     }
     
     private ProductReservationResponseEventPayload processProductReservation(
