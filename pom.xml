@@ -35,6 +35,7 @@
 		<maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
 		<jakarta.persistence.version>3.1.0</jakarta.persistence.version>
 		<java-uuid-generator.version>5.1.0</java-uuid-generator.version>
+		<jooq.version>3.19.15</jooq.version>
 	</properties>
 
 	<dependencyManagement>
@@ -202,6 +203,21 @@
 				<groupId>com.fasterxml.uuid</groupId>
 				<artifactId>java-uuid-generator</artifactId>
 				<version>${java-uuid-generator.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.jooq</groupId>
+				<artifactId>jooq</artifactId>
+				<version>${jooq.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.jooq</groupId>
+				<artifactId>jooq-meta</artifactId>
+				<version>${jooq.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.jooq</groupId>
+				<artifactId>jooq-codegen</artifactId>
+				<version>${jooq.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

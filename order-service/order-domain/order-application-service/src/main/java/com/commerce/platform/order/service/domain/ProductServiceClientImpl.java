@@ -6,7 +6,9 @@ import com.commerce.platform.order.service.domain.ports.output.client.ProductSer
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.RestClientException;
 
 @Slf4j
 @Component
@@ -14,12 +16,12 @@ public class ProductServiceClientImpl implements ProductServiceClient {
 
     private static final String PRODUCT_SEARCH_PATH = "/api/v1/products/search";
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final String productServiceUrl;
 
-    public ProductServiceClientImpl(RestTemplate restTemplate,
+    public ProductServiceClientImpl(RestClient restClient,
                                    @Value("${product-service.url}") String productServiceUrl) {
-        this.restTemplate = restTemplate;
+        this.restClient = restClient;
         this.productServiceUrl = productServiceUrl;
     }
 
@@ -28,11 +30,23 @@ public class ProductServiceClientImpl implements ProductServiceClient {
         log.info("Calling Product Service to get products for IDs: {}", request.getProductIds());
         
         String url = productServiceUrl + PRODUCT_SEARCH_PATH;
-        SearchProductsResponse response = restTemplate.postForObject(url, request, SearchProductsResponse.class);
         
-        log.info("Received {} products from Product Service", 
-                response != null ? response.getProducts().size() : 0);
-        
-        return response;
+        try {
+            SearchProductsResponse response = restClient
+                    .post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(SearchProductsResponse.class);
+            
+            log.info("Received {} products from Product Service", 
+                    response != null ? response.getProducts().size() : 0);
+            
+            return response;
+        } catch (RestClientException e) {
+            log.error("Failed to call Product Service: {}", e.getMessage());
+            throw new RuntimeException("Product service unavailable", e);
+        }
     }
-} 
+}

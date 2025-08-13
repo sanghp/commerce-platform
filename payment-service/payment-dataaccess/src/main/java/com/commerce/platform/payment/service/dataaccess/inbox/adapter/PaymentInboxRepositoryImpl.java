@@ -6,30 +6,35 @@ import com.commerce.platform.payment.service.dataaccess.inbox.mapper.PaymentInbo
 import com.commerce.platform.payment.service.dataaccess.inbox.repository.PaymentInboxJpaRepository;
 import com.commerce.platform.payment.service.domain.inbox.model.PaymentInboxMessage;
 import com.commerce.platform.payment.service.domain.ports.output.repository.PaymentInboxRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.jooq.DSLContext;
+import org.jooq.Record;
+import org.jooq.Result;
 import org.springframework.stereotype.Component;
 
+import static org.jooq.impl.DSL.*;
 import java.sql.Timestamp;
-
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
-@RequiredArgsConstructor
 @Component
 public class PaymentInboxRepositoryImpl implements PaymentInboxRepository {
     
     private final PaymentInboxJpaRepository paymentInboxJpaRepository;
     private final PaymentInboxDataAccessMapper paymentInboxDataAccessMapper;
-    
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final DSLContext dsl;
+
+    public PaymentInboxRepositoryImpl(PaymentInboxJpaRepository paymentInboxJpaRepository,
+                                     PaymentInboxDataAccessMapper paymentInboxDataAccessMapper,
+                                     DSLContext dsl) {
+        this.paymentInboxJpaRepository = paymentInboxJpaRepository;
+        this.paymentInboxDataAccessMapper = paymentInboxDataAccessMapper;
+        this.dsl = dsl;
+    }
     
     @Override
     public PaymentInboxMessage save(PaymentInboxMessage paymentInboxMessage) {
@@ -50,21 +55,31 @@ public class PaymentInboxRepositoryImpl implements PaymentInboxRepository {
             return paymentInboxMessages;
         }
         
-        String sql = "INSERT IGNORE INTO payment_inbox (id, message_id, saga_id, type, payload, status, received_at, retry_count) " +
-                     "VALUES (UNHEX(REPLACE(?, '-', '')), UNHEX(REPLACE(?, '-', '')), UNHEX(REPLACE(?, '-', '')), ?, ?, ?, ?, ?)";
-        
         int insertedCount = 0;
         for (PaymentInboxMessage message : paymentInboxMessages) {
-            int result = jdbcTemplate.update(sql,
-                message.getId().toString(),
-                message.getMessageId().toString(),
-                message.getSagaId().toString(),
-                message.getType().name(),
-                message.getPayload(),
-                message.getStatus().name(),
-                Timestamp.from(message.getReceivedAt().toInstant()),
-                message.getRetryCount()
-            );
+            int result = dsl.insertInto(table("payment_inbox"))
+                .columns(
+                    field("id"),
+                    field("message_id"),
+                    field("saga_id"),
+                    field("type"),
+                    field("payload"),
+                    field("status"),
+                    field("received_at"),
+                    field("retry_count")
+                )
+                .values(
+                    message.getId(),
+                    message.getMessageId(),
+                    message.getSagaId(),
+                    message.getType().name(),
+                    message.getPayload(),
+                    message.getStatus().name(),
+                    Timestamp.from(message.getReceivedAt().toInstant()),
+                    message.getRetryCount()
+                )
+                .onDuplicateKeyIgnore()
+                .execute();
             insertedCount += result;
         }
         
@@ -75,17 +90,46 @@ public class PaymentInboxRepositoryImpl implements PaymentInboxRepository {
     
     @Override
     public List<PaymentInboxMessage> findByStatusOrderByReceivedAtWithSkipLock(InboxStatus status, int limit) {
-        return paymentInboxJpaRepository.findByStatusOrderByReceivedAtWithSkipLock(status.name(), PageRequest.of(0, limit))
-                .stream()
-                .map(paymentInboxDataAccessMapper::inboxEntityToPaymentInboxMessage)
-                .collect(Collectors.toList());
+        var result = dsl.selectFrom(table("payment_inbox"))
+            .where(field("status").eq(status.name()))
+            .orderBy(field("received_at"))
+            .limit(limit)
+            .forUpdate().skipLocked()
+            .fetch();
+        
+        return result.map(this::mapToPaymentInboxMessage);
     }
     
     @Override
     public List<PaymentInboxMessage> findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus status, int maxRetryCount, int limit) {
-        return paymentInboxJpaRepository.findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(status.name(), maxRetryCount, PageRequest.of(0, limit))
-                .stream()
-                .map(paymentInboxDataAccessMapper::inboxEntityToPaymentInboxMessage)
-                .collect(Collectors.toList());
+        var result = dsl.selectFrom(table("payment_inbox"))
+            .where(field("status").eq(status.name())
+                .and(field("retry_count").lt(maxRetryCount)))
+            .orderBy(field("received_at"))
+            .limit(limit)
+            .forUpdate().skipLocked()
+            .fetch();
+        
+        return result.map(this::mapToPaymentInboxMessage);
+    }
+    
+    private PaymentInboxMessage mapToPaymentInboxMessage(Record record) {
+        return PaymentInboxMessage.builder()
+                .id(record.getValue("id", UUID.class))
+                .messageId(record.getValue("message_id", UUID.class))
+                .sagaId(record.getValue("saga_id", UUID.class))
+                .type(ServiceMessageType.valueOf(record.getValue("type", String.class)))
+                .payload(record.getValue("payload", String.class))
+                .status(InboxStatus.valueOf(record.getValue("status", String.class)))
+                .receivedAt(ZonedDateTime.ofInstant(
+                    record.getValue("received_at", Timestamp.class).toInstant(), 
+                    ZoneOffset.UTC))
+                .processedAt(record.getValue("processed_at", Timestamp.class) != null ? 
+                    ZonedDateTime.ofInstant(
+                        record.getValue("processed_at", Timestamp.class).toInstant(), 
+                        ZoneOffset.UTC) : null)
+                .retryCount(record.getValue("retry_count", Integer.class))
+                .errorMessage(record.getValue("error_message", String.class))
+                .build();
     }
 }

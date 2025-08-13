@@ -29,6 +29,10 @@
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.commerce.platform</groupId>
+            <artifactId>inbox</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.querydsl</groupId>
             <artifactId>querydsl-jpa</artifactId>
             <classifier>jakarta</classifier>
@@ -36,6 +40,10 @@
         <dependency>
             <groupId>com.querydsl</groupId>
             <artifactId>querydsl-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
         </dependency>
     </dependencies>
 
@@ -66,6 +74,53 @@
                             <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jooq</groupId>
+                <artifactId>jooq-codegen-maven</artifactId>
+                <version>${jooq.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.mysql</groupId>
+                        <artifactId>mysql-connector-j</artifactId>
+                        <version>${mysql.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <jdbc>
+                        <driver>com.mysql.cj.jdbc.Driver</driver>
+                        <url>${env.DB_URL:jdbc:mysql://localhost:13306/payment?useSSL=false&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true}</url>
+                        <user>${env.DB_USER:root}</user>
+                        <password>${env.DB_PASSWORD:root}</password>
+                    </jdbc>
+                    <generator>
+                        <database>
+                            <name>org.jooq.meta.mysql.MySQLDatabase</name>
+                            <includes>payment_outbox|payment_inbox</includes>
+                            <excludes></excludes>
+                            <inputSchema>payment</inputSchema>
+                            <forcedTypes>
+                                <forcedType>
+                                    <userType>java.util.UUID</userType>
+                                    <converter>com.commerce.platform.payment.service.dataaccess.converter.UuidBinaryConverter</converter>
+                                    <includeExpression>.*\.(id|message_id|saga_id)</includeExpression>
+                                    <includeTypes>BINARY\(16\)</includeTypes>
+                                </forcedType>
+                            </forcedTypes>
+                        </database>
+                        <target>
+                            <packageName>com.commerce.platform.payment.service.dataaccess.jooq</packageName>
+                            <directory>target/generated-sources/jooq</directory>
+                        </target>
+                    </generator>
                 </configuration>
             </plugin>
         </plugins>

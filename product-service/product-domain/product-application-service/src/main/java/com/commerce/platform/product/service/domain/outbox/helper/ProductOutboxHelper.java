@@ -53,13 +53,6 @@ public class ProductOutboxHelper {
         log.info("ProductOutboxMessage saved with outbox id: {}", outboxMessage.getId());
     }
 
-    
-    @Transactional
-    public void updateOutboxMessagesStatus(List<ProductOutboxMessage> messages, OutboxStatus newStatus) {
-        messages.forEach(message -> message.setOutboxStatus(newStatus));
-        outboxRepository.saveAll(messages);
-        log.info("Updated {} ProductOutboxMessages to status: {}", messages.size(), newStatus);
-    }
 
 
     @Transactional

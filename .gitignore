@@ -32,8 +32,6 @@ build/
 ### VS Code ###
 .vscode/
 
-*.sh
-
 ### Claude ###
 .claudeignore
 CLAUDE.md
@@ -41,3 +39,6 @@ tasks/
 
 ### MacOS ###
 .DS_Store
+
+### log
+*.log
