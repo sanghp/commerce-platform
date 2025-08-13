@@ -15,11 +15,11 @@ import java.util.UUID;
 public interface OrderInboxJpaRepository extends JpaRepository<OrderInboxEntity, UUID> {
     Optional<OrderInboxEntity> findByMessageId(UUID messageId);
     
-    @Query(value = "SELECT * FROM order_inbox WHERE status = :#{#status.name()} ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
+    @Query(value = "SELECT * FROM order_inbox WHERE status = :status ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
            nativeQuery = true)
-    List<OrderInboxEntity> findByStatusOrderByReceivedAt(InboxStatus status, Pageable pageable);
+    List<OrderInboxEntity> findByStatusOrderByReceivedAt(String status, Pageable pageable);
     
-    @Query(value = "SELECT * FROM order_inbox WHERE status = :#{#status.name()} AND retry_count < :maxRetryCount ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
+    @Query(value = "SELECT * FROM order_inbox WHERE status = :status AND retry_count < :maxRetryCount ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
            nativeQuery = true)
-    List<OrderInboxEntity> findByStatusAndRetryCountLessThanOrderByReceivedAt(InboxStatus status, Integer maxRetryCount, Pageable pageable);
+    List<OrderInboxEntity> findByStatusAndRetryCountLessThanOrderByReceivedAt(String status, Integer maxRetryCount, Pageable pageable);
 }

@@ -72,11 +72,6 @@ public class PaymentOutboxHelper {
                 .build());
     }
     
-    @Transactional
-    public void saveAll(List<PaymentOutboxMessage> messages) {
-        paymentOutboxRepository.saveAll(messages);
-        log.info("Saved {} PaymentOutboxMessages", messages.size());
-    }
     
     @Transactional
     public int deletePaymentOutboxMessageByOutboxStatus(OutboxStatus outboxStatus, int limit) {

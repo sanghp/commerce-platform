@@ -17,11 +17,11 @@ public interface ProductInboxJpaRepository extends JpaRepository<ProductInboxEnt
     
     Optional<ProductInboxEntity> findByMessageId(UUID messageId);
     
-    @Query(value = "SELECT * FROM product_inbox WHERE status = :#{#status.name()} ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
+    @Query(value = "SELECT * FROM product_inbox WHERE status = :status ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
            nativeQuery = true)
-    List<ProductInboxEntity> findByStatusOrderByReceivedAt(InboxStatus status, Pageable pageable);
+    List<ProductInboxEntity> findByStatusOrderByReceivedAt(String status, Pageable pageable);
     
-    @Query(value = "SELECT * FROM product_inbox WHERE status = :#{#status.name()} AND retry_count < :maxRetryCount ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
+    @Query(value = "SELECT * FROM product_inbox WHERE status = :status AND retry_count < :maxRetryCount ORDER BY received_at LIMIT :#{#pageable.pageSize} FOR UPDATE SKIP LOCKED", 
            nativeQuery = true)
-    List<ProductInboxEntity> findByStatusAndRetryCountLessThanOrderByReceivedAt(InboxStatus status, int maxRetryCount, Pageable pageable);
+    List<ProductInboxEntity> findByStatusAndRetryCountLessThanOrderByReceivedAt(String status, Integer maxRetryCount, Pageable pageable);
 } 

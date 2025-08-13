@@ -6,17 +6,17 @@ import com.commerce.platform.product.service.dataaccess.inbox.repository.Product
 import com.commerce.platform.inbox.InboxStatus;
 import com.commerce.platform.product.service.domain.inbox.model.ProductInboxMessage;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductInboxRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.jooq.DSLContext;
+import org.jooq.JSON;
+import org.jooq.Record;
 import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 
-import java.sql.Timestamp;
+import static com.commerce.platform.product.service.dataaccess.jooq.tables.ProductInbox.PRODUCT_INBOX;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -24,14 +24,14 @@ public class ProductInboxRepositoryImpl implements ProductInboxRepository {
 
     private final ProductInboxJpaRepository productInboxJpaRepository;
     private final ProductInboxDataAccessMapper productInboxDataAccessMapper;
-    
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final DSLContext dsl;
 
     public ProductInboxRepositoryImpl(ProductInboxJpaRepository productInboxJpaRepository,
-                                      ProductInboxDataAccessMapper productInboxDataAccessMapper) {
+                                     ProductInboxDataAccessMapper productInboxDataAccessMapper,
+                                     DSLContext dsl) {
         this.productInboxJpaRepository = productInboxJpaRepository;
         this.productInboxDataAccessMapper = productInboxDataAccessMapper;
+        this.dsl = dsl;
     }
 
     @Override
@@ -49,21 +49,31 @@ public class ProductInboxRepositoryImpl implements ProductInboxRepository {
             return productInboxMessages;
         }
         
-        String sql = "INSERT IGNORE INTO product_inbox (id, message_id, saga_id, type, payload, status, received_at, retry_count) " +
-                     "VALUES (UNHEX(REPLACE(?, '-', '')), UNHEX(REPLACE(?, '-', '')), UNHEX(REPLACE(?, '-', '')), ?, ?, ?, ?, ?)";
-        
         int insertedCount = 0;
         for (ProductInboxMessage message : productInboxMessages) {
-            int result = jdbcTemplate.update(sql,
-                message.getId().toString(),
-                message.getMessageId().toString(),
-                message.getSagaId().toString(),
-                message.getType().name(),
-                message.getPayload(),
-                message.getStatus().name(),
-                Timestamp.from(message.getReceivedAt().toInstant()),
-                message.getRetryCount()
-            );
+            int result = dsl.insertInto(PRODUCT_INBOX)
+                .columns(
+                    PRODUCT_INBOX.ID,
+                    PRODUCT_INBOX.MESSAGE_ID,
+                    PRODUCT_INBOX.SAGA_ID,
+                    PRODUCT_INBOX.TYPE,
+                    PRODUCT_INBOX.PAYLOAD,
+                    PRODUCT_INBOX.STATUS,
+                    PRODUCT_INBOX.RECEIVED_AT,
+                    PRODUCT_INBOX.RETRY_COUNT
+                )
+                .values(
+                    message.getId(),
+                    message.getMessageId(),
+                    message.getSagaId(),
+                    message.getType().name(),
+                    JSON.json(message.getPayload()),
+                    message.getStatus().name(),
+                    message.getReceivedAt().toLocalDateTime(),
+                    message.getRetryCount()
+                )
+                .onDuplicateKeyIgnore()
+                .execute();
             insertedCount += result;
         }
         
@@ -80,18 +90,42 @@ public class ProductInboxRepositoryImpl implements ProductInboxRepository {
     
     @Override
     public List<ProductInboxMessage> findByStatusOrderByReceivedAtWithSkipLock(InboxStatus status, int limit) {
-        return productInboxJpaRepository.findByStatusOrderByReceivedAt(status, PageRequest.of(0, limit))
-                .stream()
-                .map(productInboxDataAccessMapper::productInboxEntityToProductInboxMessage)
-                .collect(Collectors.toList());
+        var result = dsl.selectFrom(PRODUCT_INBOX)
+            .where(PRODUCT_INBOX.STATUS.eq(status.name()))
+            .orderBy(PRODUCT_INBOX.RECEIVED_AT)
+            .limit(limit)
+            .forUpdate().skipLocked()
+            .fetch();
+        
+        return result.map(this::mapToProductInboxMessage);
     }
     
     @Override
     public List<ProductInboxMessage> findByStatusAndRetryCountLessThanOrderByReceivedAtWithSkipLock(InboxStatus status, int maxRetryCount, int limit) {
-        return productInboxJpaRepository.findByStatusAndRetryCountLessThanOrderByReceivedAt(
-                        status, maxRetryCount, PageRequest.of(0, limit))
-                .stream()
-                .map(productInboxDataAccessMapper::productInboxEntityToProductInboxMessage)
-                .collect(Collectors.toList());
+        var result = dsl.selectFrom(PRODUCT_INBOX)
+            .where(PRODUCT_INBOX.STATUS.eq(status.name())
+                .and(PRODUCT_INBOX.RETRY_COUNT.lt(maxRetryCount)))
+            .orderBy(PRODUCT_INBOX.RECEIVED_AT)
+            .limit(limit)
+            .forUpdate().skipLocked()
+            .fetch();
+        
+        return result.map(this::mapToProductInboxMessage);
     }
-} 
+    
+    private ProductInboxMessage mapToProductInboxMessage(Record record) {
+        return ProductInboxMessage.builder()
+                .id(record.getValue(PRODUCT_INBOX.ID))
+                .messageId(record.getValue(PRODUCT_INBOX.MESSAGE_ID))
+                .sagaId(record.getValue(PRODUCT_INBOX.SAGA_ID))
+                .type(ServiceMessageType.valueOf(record.getValue(PRODUCT_INBOX.TYPE)))
+                .payload(record.getValue(PRODUCT_INBOX.PAYLOAD).data())
+                .status(InboxStatus.valueOf(record.getValue(PRODUCT_INBOX.STATUS)))
+                .receivedAt(record.getValue(PRODUCT_INBOX.RECEIVED_AT).atZone(ZoneOffset.UTC))
+                .processedAt(record.getValue(PRODUCT_INBOX.PROCESSED_AT) != null ? 
+                    record.getValue(PRODUCT_INBOX.PROCESSED_AT).atZone(ZoneOffset.UTC) : null)
+                .retryCount(record.getValue(PRODUCT_INBOX.RETRY_COUNT))
+                .errorMessage(record.getValue(PRODUCT_INBOX.ERROR_MESSAGE))
+                .build();
+    }
+}

@@ -71,11 +71,6 @@ public class OrderOutboxHelper {
                 .build());
     }
 
-    @Transactional
-    public void saveAll(List<OrderOutboxMessage> messages) {
-        orderOutboxRepository.saveAll(messages);
-        log.info("Saved {} OrderOutboxMessages", messages.size());
-    }
 
     @Transactional
     public int deleteOrderOutboxMessageByOutboxStatus(OutboxStatus outboxStatus, int limit) {

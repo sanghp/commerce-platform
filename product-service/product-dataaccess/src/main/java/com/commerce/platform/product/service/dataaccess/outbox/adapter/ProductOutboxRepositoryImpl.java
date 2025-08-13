@@ -1,23 +1,20 @@
 package com.commerce.platform.product.service.dataaccess.outbox.adapter;
 
 import com.commerce.platform.domain.event.ServiceMessageType;
-
-import com.commerce.platform.product.service.dataaccess.outbox.entity.ProductOutboxEntity;
 import com.commerce.platform.product.service.dataaccess.outbox.mapper.ProductOutboxDataAccessMapper;
 import com.commerce.platform.product.service.dataaccess.outbox.repository.ProductOutboxJpaRepository;
 import com.commerce.platform.product.service.domain.outbox.model.ProductOutboxMessage;
 import com.commerce.platform.product.service.domain.ports.output.repository.ProductOutboxRepository;
 import com.commerce.platform.outbox.OutboxStatus;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.jooq.DSLContext;
+import org.jooq.JSON;
+import org.jooq.Record;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-
+import static com.commerce.platform.product.service.dataaccess.jooq.tables.ProductOutbox.PRODUCT_OUTBOX;
+import static org.jooq.impl.DSL.*;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -25,14 +22,19 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
 public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
 
     private final ProductOutboxJpaRepository outboxJpaRepository;
     private final ProductOutboxDataAccessMapper outboxDataAccessMapper;
-    
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final DSLContext dsl;
+
+    public ProductOutboxRepositoryImpl(ProductOutboxJpaRepository outboxJpaRepository,
+                                      ProductOutboxDataAccessMapper outboxDataAccessMapper,
+                                      DSLContext dsl) {
+        this.outboxJpaRepository = outboxJpaRepository;
+        this.outboxDataAccessMapper = outboxDataAccessMapper;
+        this.dsl = dsl;
+    }
 
     @Override
     public ProductOutboxMessage save(ProductOutboxMessage outboxMessage) {
@@ -68,19 +70,26 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
     
     @Override
     public List<ProductOutboxMessage> findByOutboxStatusWithSkipLock(OutboxStatus outboxStatus, int limit) {
-        return outboxJpaRepository.findByOutboxStatusWithSkipLock(outboxStatus.name(), limit)
-                .stream()
-                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
-                .collect(Collectors.toList());
+        var result = dsl.selectFrom(PRODUCT_OUTBOX)
+            .where(PRODUCT_OUTBOX.OUTBOX_STATUS.eq(outboxStatus.name()))
+            .orderBy(PRODUCT_OUTBOX.CREATED_AT)
+            .limit(limit)
+            .forUpdate().skipLocked()
+            .fetch();
+        
+        return result.map(this::mapToProductOutboxMessage);
     }
     
     @Override
     public List<ProductOutboxMessage> findByOutboxStatusAndFetchedAtBefore(OutboxStatus outboxStatus, ZonedDateTime fetchedAtBefore, int limit) {
-        return outboxJpaRepository.findByOutboxStatusAndFetchedAtBeforeOrderByCreatedAt(outboxStatus, fetchedAtBefore)
-                .stream()
-                .limit(limit)
-                .map(outboxDataAccessMapper::productOutboxEntityToOutboxMessage)
-                .collect(Collectors.toList());
+        var result = dsl.selectFrom(PRODUCT_OUTBOX)
+            .where(PRODUCT_OUTBOX.OUTBOX_STATUS.eq(outboxStatus.name())
+                .and(PRODUCT_OUTBOX.FETCHED_AT.lt(fetchedAtBefore.toLocalDateTime())))
+            .orderBy(PRODUCT_OUTBOX.CREATED_AT)
+            .limit(limit)
+            .fetch();
+        
+        return result.map(this::mapToProductOutboxMessage);
     }
     
     @Override
@@ -95,27 +104,29 @@ public class ProductOutboxRepositoryImpl implements ProductOutboxRepository {
         if (ids.isEmpty()) {
             return 0;
         }
-        
-        String sql = "UPDATE product_outbox SET outbox_status = ?, fetched_at = ? WHERE id = UNHEX(REPLACE(?, '-', ''))";
-        
-        int[] updateCounts = jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
-            @Override
-            public void setValues(PreparedStatement ps, int i) throws SQLException {
-                ps.setString(1, status.name());
-                if (fetchedAt != null) {
-                    ps.setTimestamp(2, java.sql.Timestamp.from(fetchedAt.toInstant()));
-                } else {
-                    ps.setNull(2, java.sql.Types.TIMESTAMP);
-                }
-                ps.setString(3, ids.get(i).toString());
-            }
-            
-            @Override
-            public int getBatchSize() {
-                return ids.size();
-            }
-        });
-        
-        return java.util.Arrays.stream(updateCounts).sum();
+
+        return dsl.update(PRODUCT_OUTBOX)
+            .set(PRODUCT_OUTBOX.OUTBOX_STATUS, status.name())
+            .set(PRODUCT_OUTBOX.FETCHED_AT, fetchedAt != null ? 
+                fetchedAt.toLocalDateTime() : null)
+            .where(PRODUCT_OUTBOX.ID.in(ids))
+            .execute();
     }
-} 
+    
+    private ProductOutboxMessage mapToProductOutboxMessage(Record record) {
+        return ProductOutboxMessage.builder()
+                .id(record.getValue(PRODUCT_OUTBOX.ID))
+                .messageId(record.getValue(PRODUCT_OUTBOX.MESSAGE_ID))
+                .sagaId(record.getValue(PRODUCT_OUTBOX.SAGA_ID))
+                .type(ServiceMessageType.valueOf(record.getValue(PRODUCT_OUTBOX.TYPE)))
+                .payload(record.getValue(PRODUCT_OUTBOX.PAYLOAD).data())
+                .outboxStatus(OutboxStatus.valueOf(record.getValue(PRODUCT_OUTBOX.OUTBOX_STATUS)))
+                .createdAt(record.getValue(PRODUCT_OUTBOX.CREATED_AT).atZone(ZoneOffset.UTC))
+                .processedAt(record.getValue(PRODUCT_OUTBOX.PROCESSED_AT) != null ? 
+                    record.getValue(PRODUCT_OUTBOX.PROCESSED_AT).atZone(ZoneOffset.UTC) : null)
+                .fetchedAt(record.getValue(PRODUCT_OUTBOX.FETCHED_AT) != null ? 
+                    record.getValue(PRODUCT_OUTBOX.FETCHED_AT).atZone(ZoneOffset.UTC) : null)
+                .version(record.getValue(PRODUCT_OUTBOX.VERSION))
+                .build();
+    }
+}
