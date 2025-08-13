@@ -72,27 +72,64 @@ Spring Boot 3.5.3과 Java 21을 기반으로 구축한 MSA 커머스 플랫폼�
 
 ---
 
-## 🚀 로컬 환경 통합 빌드 및 실행
+## 🚀 빌드 및 실행
 
-로컬 환경에서 모든 서비스를 한 번에 빌드하고 실행 및 테스트할 수 있는 통합 스크립트를 제공합니다.
+### 사전 요구사항
+- Java 21
+- Docker & Docker Compose
 
-### 통합 빌드 및 실행 (`build-and-run.sh`)
+### 빌드 및 실행
 
-아래 스크립트는 Maven 프로젝트 빌드, 컨테이너 이미지 생성, 인프라 및 애플리케이션 서비스 실행, 데이터베이스 마이그레이션까지 전 과정을 자동화합니다.
-
+#### 1. 인프라 서비스 실행
 ```bash
-./scripts/build-and-run.sh
+cd infrastructure/docker-compose
+
+# 인프라 서비스 시작 (MySQL, Kafka, Schema Registry 등)
+# MySQL 시작 시 init-db.sql이 자동 실행되어 데이터베이스 생성
+docker compose up -d
+
+# Flyway로 데이터베이스 마이그레이션 실행
+docker compose -f docker-compose-flyway.yml up
 ```
 
-#### 실행 프로세스 상세
+#### 2. Maven 빌드 및 Docker 이미지 생성
+```bash
+# 프로젝트 루트에서 실행
+# Spring Boot Buildpacks를 사용하여 Docker 이미지 자동 생성
+./mvnw clean install -DskipTests
+```
 
-스크립트는 다음의 프로세스를 순차적으로 실행합니다.
+#### 3. 애플리케이션 서비스 실행
+```bash
+cd infrastructure/docker-compose
 
-1.  **빌드 & 이미지 생성**: `mvn clean install`를 실행하여 각 서비스를 컨테이너 이미지로 빌드합니다.
-2.  **인프라 프로비저닝**: `docker-compose.yml`을 실행하여 `MySQL`, `Kafka`, `Schema Registry` 등 인프라 컨테이너를 실행합니다.
-3.  **데이터베이스 마이그레이션**: `docker-compose-flyway.yml`을 통해 `Flyway`를 실행하여 각 서비스의 데이터베이스 스키마와 초기 데이터를 적용합니다.
-4.  **서비스 오케스트레이션**: `docker-compose-services.yml`을 실행하여 모든 마이크로서비스(`Order`, `Product`, `Payment`) 컨테이너를 실행하고 서비스 간 네트워크를 구성합니다.
-5.  **로드 밸런싱**: `HAProxy`가 각 서비스의 로드 밸런서 역할을 수행하며 외부 요청을 라우팅합니다. (`Order`:8080, `Product`:8090, `Payment`:8100)
+# 애플리케이션 서비스 실행 (Order, Product, Payment)
+docker compose -f docker-compose-services.yml up -d
+```
+
+#### 4. 서비스 종료
+```bash
+# 모든 서비스 종료
+docker compose -f docker-compose-services.yml down
+docker compose down
+```
+
+### 서비스 접속 정보
+
+#### 로드 밸런서 엔드포인트
+- Order Service: http://localhost:8080
+- Product Service: http://localhost:8090  
+- Payment Service: http://localhost:8100
+
+#### 관리 도구
+- HAProxy Stats: http://localhost:9000/stats
+- Kafka UI: http://localhost:28080
+- Jaeger UI: http://localhost:16686
+
+#### 개별 서비스
+- Order Service: 8181, 8281, 8381
+- Product Service: 8182, 8282, 8382
+- Payment Service: 8183, 8283, 8383
 
 
 ### 분산 트랜잭션 부하 테스트 (`load_test.sh`)
