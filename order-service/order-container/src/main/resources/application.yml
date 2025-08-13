@@ -1,33 +1,39 @@
 server:
   port: 8181
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-  endpoint:
-    env:
-      show-values: ALWAYS
-    health:
-      show-details: always
+otel:
+  exporter:
+    otlp:
+      endpoint: http://localhost:4318
+      protocol: http/protobuf
+  traces:
+    exporter: otlp
+  metrics:
+    exporter: none
+  logs:
+    exporter: none
+  resource:
+    attributes:
+      service.name: ${spring.application.name}
+  instrumentation:
+    spring-webmvc:
+      enabled: true
+    jdbc:
+      enabled: true
 
 logging:
   level:
-    # root: warn
-    # org.springframework: warn
-    # org.springframework.boot: warn
-    # org.hibernate.SQL: off
-    # org.hibernate.type.descriptor.sql: off
-    # com.zaxxer.hikari: error
-    # org.apache.coyote.http11: off
-    root: off
-    org.springframework: off
-    org.springframework.boot: off
-    org.hibernate.SQL: off
-    org.hibernate.type.descriptor.sql: off
-    com.zaxxer.hikari: error
-    org.apache.coyote.http11: off
+    root: info
+#    root: info
+#    org.springframework.web: INFO
+#    io.micrometer.tracing: DEBUG
+#    io.opentelemetry: INFO
+#    io.micrometer.observation: DEBUG
+#    # Hibernate and DB logging still disabled for clarity
+#    org.hibernate.SQL: off
+#    org.hibernate.type.descriptor.sql: off
+#    com.zaxxer.hikari: error
+#    org.apache.coyote.http11: off
 
 order-service:
   product-reservation-request-topic-name: product-reservation-request
@@ -35,21 +41,25 @@ order-service:
   payment-request-topic-name: payment-request
   payment-response-topic-name: payment-response
   customer-topic-name: customer
-  outbox-scheduler-fixed-rate: 50
-  outbox-scheduler-initial-delay: 1000
-  outbox-scheduler-batch-size: 100
+  outbox-scheduler-fixed-rate: 10
+  outbox-scheduler-initial-delay: 100
+  outbox-scheduler-batch-size: 50
   outbox-processing-timeout-minutes: 5
   outbox-cleaner-cron: "@midnight"
   outbox-cleaner-batch-size: 100
-  inbox-scheduler-fixed-rate: 50
-  inbox-retry-scheduler-fixed-rate: 1000
+  inbox-scheduler-fixed-rate: 100
+  inbox-retry-scheduler-fixed-rate: 5000
   inbox-max-retry-count: 3
-  inbox-batch-size: 200
+  inbox-batch-size: 50
 
 product-service:
   url: http://localhost:8182
 
 spring:
+  application:
+    name: order-service
+  jooq:
+    sql-dialect: mysql
   main:
     banner-mode: off
   jpa:
@@ -62,6 +72,7 @@ spring:
     properties:
       hibernate:
         default_schema: order
+        dialect: org.hibernate.dialect.MySQLDialect
   datasource:
     url: jdbc:mysql://localhost:13306/order?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
     username: root
@@ -88,13 +99,13 @@ kafka-producer-config:
   key-serializer-class: org.apache.kafka.common.serialization.UUIDSerializer
   value-serializer-class: io.confluent.kafka.serializers.KafkaAvroSerializer
   acks: 1
-  batch-size: 16384
-  linger-ms: 5
-  compression-type: none
-  request-timeout-ms: 60000
-  retry-count: 5
+  batch-size: 32768
+  linger-ms: 10
+  compression-type: lz4
+  request-timeout-ms: 30000
+  retry-count: 3
   metadata-max-age-ms: 300000
-  schema-registry-cache-size: 100
+  schema-registry-cache-size: 1000
   auto-register-schemas: false
 
 kafka-consumer-config:
@@ -106,7 +117,7 @@ kafka-consumer-config:
   auto-offset-reset: earliest
   specific-avro-reader-key: specific.avro.reader
   specific-avro-reader: true
-  batch-listener: true
+  batch-listener: false
   auto-startup: true
   concurrency-level: 10
   session-timeout-ms: 10000
@@ -124,3 +135,11 @@ spring:
       on-profile: docker
   flyway:
     enabled: false
+
+product-service:
+  url: http://product-service-1:8282
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://otel-collector:4317
