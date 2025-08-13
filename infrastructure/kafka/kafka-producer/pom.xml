@@ -40,6 +40,7 @@
             <groupId>io.confluent</groupId>
             <artifactId>kafka-avro-serializer</artifactId>
         </dependency>
+
     </dependencies>
 
 </project>
