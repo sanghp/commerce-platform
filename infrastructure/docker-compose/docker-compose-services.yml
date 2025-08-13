@@ -3,12 +3,16 @@ version: '3.8'
 services:
   # Order Service - 2 instances
   order-service-1:
-    image: com.commerce.platform/order.service:0.0.1-SNAPSHOT
+    image: order-service:latest
     container_name: order-service-1
     ports:
       - "8181:8181"
     environment:
-      JAVA_OPTS: "-Xms1g -Xmx1g"
+      JAVA_OPTS: "-Xms512m -Xmx512m"
+      OTEL_SERVICE_NAME: order-service-1
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: 0.1
       SERVER_PORT: 8181
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -24,12 +28,16 @@ services:
       - commerce-platform
 
   order-service-2:
-    image: com.commerce.platform/order.service:0.0.1-SNAPSHOT
+    image: order-service:latest
     container_name: order-service-2
     ports:
       - "8281:8181"
     environment:
-      JAVA_OPTS: "-Xms1g -Xmx1g"
+      JAVA_OPTS: "-Xms512m -Xmx512m"
+      OTEL_SERVICE_NAME: order-service-2
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: 0.1
       SERVER_PORT: 8181
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/order?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -46,12 +54,16 @@ services:
 
   # Product Service - 2 instances
   product-service-1:
-    image: com.commerce.platform/product.service:0.0.1-SNAPSHOT
+    image: product-service:latest
     container_name: product-service-1
     ports:
       - "8182:8182"
     environment:
-      JAVA_OPTS: "-Xms1g -Xmx1g"
+      JAVA_OPTS: "-Xms512m -Xmx512m"
+      OTEL_SERVICE_NAME: product-service-1
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: 0.1
       SERVER_PORT: 8182
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/product?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -66,12 +78,16 @@ services:
       - commerce-platform
 
   product-service-2:
-    image: com.commerce.platform/product.service:0.0.1-SNAPSHOT
+    image: product-service:latest
     container_name: product-service-2
     ports:
       - "8282:8182"
     environment:
-      JAVA_OPTS: "-Xms1g -Xmx1g"
+      JAVA_OPTS: "-Xms512m -Xmx512m"
+      OTEL_SERVICE_NAME: product-service-2
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: 0.1
       SERVER_PORT: 8182
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/product?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -87,12 +103,16 @@ services:
 
   # Payment Service - 2 instances
   payment-service-1:
-    image: com.commerce.platform/payment.service:0.0.1-SNAPSHOT
+    image: payment-service:latest
     container_name: payment-service-1
     ports:
       - "8183:8183"
     environment:
-      JAVA_OPTS: "-Xms1g -Xmx1g"
+      JAVA_OPTS: "-Xms512m -Xmx512m"
+      OTEL_SERVICE_NAME: payment-service-1
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: 0.1
       SERVER_PORT: 8183
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/payment?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -107,12 +127,16 @@ services:
       - commerce-platform
 
   payment-service-2:
-    image: com.commerce.platform/payment.service:0.0.1-SNAPSHOT
+    image: payment-service:latest
     container_name: payment-service-2
     ports:
       - "8283:8183"
     environment:
-      JAVA_OPTS: "-Xms1g -Xmx1g"
+      JAVA_OPTS: "-Xms512m -Xmx512m"
+      OTEL_SERVICE_NAME: payment-service-2
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: 0.1
       SERVER_PORT: 8183
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/payment?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true

@@ -100,6 +100,32 @@ services:
     networks:
       - commerce-platform
 
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"    # Jaeger UI
+      - "14250:14250"    # gRPC for model.proto
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - commerce-platform
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"      # OTLP gRPC receiver
+      - "4318:4318"      # OTLP HTTP receiver
+      - "8888:8888"      # Prometheus metrics
+    depends_on:
+      - jaeger
+    networks:
+      - commerce-platform
+
   init-kafka:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
@@ -114,10 +140,10 @@ services:
       echo 'Waiting for Kafka to be ready...'
       kafka-topics --bootstrap-server kafka1:29092 --list
 
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-request --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 30 --replication-factor 3
-      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 30 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-request --partitions 3 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic product-reservation-response --partitions 3 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-request --partitions 3 --replication-factor 3
+      kafka-topics --bootstrap-server kafka1:29092 --create --if-not-exists --topic payment-response --partitions 3 --replication-factor 3
 
       echo 'Topics created:'
       kafka-topics --bootstrap-server kafka1:29092 --list
